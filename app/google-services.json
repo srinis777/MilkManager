@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "205438775239",
+    "firebase_url": "https://milkmanager-885ce.firebaseio.com",
+    "project_id": "milkmanager-885ce",
+    "storage_bucket": "milkmanager-885ce.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205438775239:android:21bf0328486d79e5",
+        "android_client_info": {
+          "package_name": "com.fibno.srinis.milkmanager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205438775239-rp0nu75p0nv2nbjt5cpigt2icog48plj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fibno.srinis.milkmanager",
+            "certificate_hash": "59abf28e2e7aa35e3ecde29196f293b13ec5af38"
+          }
+        },
+        {
+          "client_id": "205438775239-2ml94n5v44a5c0r7tghraj0tti01gvc0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT1FO7CxIGS0L5zdVtyt4N-gOfB113TFY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "205438775239-2ml94n5v44a5c0r7tghraj0tti01gvc0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
