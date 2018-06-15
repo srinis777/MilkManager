@@ -1,34 +1,32 @@
 package com.fibno.srinis.milkmanager.model;
 
+import java.util.Map;
+
 public class Months
 {
-    private Days[] days;
+    private Map<String, Integer> days;
+    private int month;
 
-    private String month;
-
-    public Days[] getDays ()
-    {
-        return days;
-    }
-
-    public void setDays (Days[] days)
-    {
-        this.days = days;
-    }
-
-    public String getMonth ()
-    {
+    public int getMonth() {
         return month;
     }
 
-    public void setMonth (String month)
-    {
+    public void setMonth(int month) {
         this.month = month;
     }
 
+    public Map<String, Integer> getDays() {
+        return days;
+    }
+
+    public void setDays(Map<String, Integer> days) {
+        this.days = days;
+    }
+
     @Override
-    public String toString()
-    {
-        return "ClassPojo [days = "+days+", month = "+month+"]";
+    public String toString() {
+        return "Months{" +
+                "days=" + days +
+                '}';
     }
 }

@@ -20,40 +20,94 @@
     <CalendarView
         android:id="@+id/calendarView"
         android:layout_width="316dp"
-        android:layout_height="wrap_content"
+        android:layout_height="317dp"
+        android:background="#FAE6F1"
         app:layout_constraintHeight_max="wrap"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
 
     <ImageButton
-        android:id="@+id/imageButton"
+        android:id="@+id/imageButtonMinus"
+        style="@android:style/Widget.DeviceDefault.Light.ImageButton"
         android:layout_width="40dp"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="28dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginTop="8dp"
+        android:elevation="0dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/calendarView"
         app:srcCompat="@drawable/ic_remove_black_24px" />
 
     <ImageButton
-        android:id="@+id/imageButton2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:id="@+id/imageButtonPlus"
+        android:layout_width="44dp"
+        android:layout_height="42dp"
         android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/textView"
+        app:layout_constraintLeft_toRightOf="@+id/textViewPackets"
         app:layout_constraintTop_toBottomOf="@+id/calendarView"
-        app:layout_constraintVertical_bias="0.0"
+        app:layout_constraintVertical_bias="0.049"
         app:srcCompat="@drawable/ic_add_black_24px" />
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/textViewPackets"
         android:layout_width="21dp"
         android:layout_height="36dp"
         android:layout_marginBottom="24dp"
+        android:layout_marginLeft="8dp"
         android:text="2"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/imageButton"
+        app:layout_constraintLeft_toRightOf="@+id/imageButtonMinus"
         app:layout_constraintTop_toBottomOf="@+id/calendarView"
-        app:layout_constraintVertical_bias="0.07" />
+        app:layout_constraintVertical_bias="0.119" />
+
+    <TextView
+        android:id="@+id/textViewTotalPacketsBought"
+        android:layout_width="wrap_content"
+        android:layout_height="25dp"
+        app:layout_constraintBaseline_toBaselineOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
+        app:layout_constraintTop_toBottomOf="@+id/imageButtonMinus"
+        app:layout_constraintVertical_bias="0.153" />
+
+    <TextView
+        android:id="@+id/textViewAdvance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTotalPacketsBought" />
+
+    <TextView
+        android:id="@+id/textViewBalance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
+        app:layout_constraintTop_toBottomOf="@+id/textViewAdvance"
+        app:layout_constraintVertical_bias="0.04" />
+
+    <Button
+        android:id="@+id/settle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:layout_marginRight="16dp"
+        android:background="attr/colorAccent"
+        android:text="SETTLE"
+        android:textColor="@android:color/background_light"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
+
+    <TextView
+        android:id="@+id/totalAmount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewBalance"
+        app:layout_constraintVertical_bias="0.195" />
 
 </android.support.constraint.ConstraintLayout>

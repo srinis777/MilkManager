@@ -1,16 +1,20 @@
 package com.fibno.srinis.milkmanager;
 
-import android.support.annotation.NonNull;
-import android.support.v7.app.AppCompatActivity;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CalendarView;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.fibno.srinis.milkmanager.model.Days;
+import com.fibno.srinis.milkmanager.model.MilkAccount;
 import com.fibno.srinis.milkmanager.model.Months;
+import com.fibno.srinis.milkmanager.model.Years;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -19,136 +23,614 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    private  final Map m_dateMilkAmountMap = new HashMap<String, Integer>();
-    private final FirebaseDatabase m_fireDatabase = FirebaseDatabase.getInstance();
+    //private HashMap<String, Years> m_dateMilkAmountMap;
+    private MilkAccount m_dateMilkAmountMap;
+    Map<Integer, Integer> mPacketsDueMap;
+    private final FirebaseDatabase mFireDatabase = FirebaseDatabase.getInstance();
     private DatabaseReference m_myRef;
-    private String m_val = "2";
-
-
-   // private String m_currentDate;
+    AlertDialog.Builder mAlertSettleBuilder;
+    AlertDialog.Builder mAlertNotDatedBuilder;
+    // private String m_currentDate;
     private Date m_currentDate;
     static int counter = 0;
+
+    //declaring constants
+    private int DEFAULT_PACKETS = 2;
+    private int MILK_PACKET_PRICE = 20;
+    private int SERVICE_CHARGE = 30;
+    private static String YEAR_PREFIX = "Y";
+    private static String MONTH_PREFIX = "M";
+    private static String DAY_PREFIX = "D";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        CalendarView simpleCalendarView = (CalendarView) findViewById(R.id.calendarView); // get the reference of CalendarView
-        m_currentDate = new Date(simpleCalendarView.getDate());
+        cacheDBData();
+        invokeDateChangeListener();
+        invokeButtonListeners();
+        createSettleAlertDialog();
+        createNotDatedAlertDialog();
+    }
 
-    //    m_currentDate = calendar.get(Calendar.DAY_OF_MONTH) + "-" + calendar.get(Calendar.MONTH) + 1
-      //          + "-" + calendar.get(Calendar.YEAR);
-        m_myRef = m_fireDatabase.getReference();
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(m_currentDate);
-        updateDBReference(2, false,
-                (calendar.get(Calendar.MONTH) + 1) + "", calendar.get(Calendar.YEAR)+"");
+    private void createSettleAlertDialog() {
+        mAlertSettleBuilder = new AlertDialog.Builder(this, R.style.SettleAlertDialogStyle);
+        mAlertSettleBuilder.setTitle("Settle Amount for Month " + getCurrentCalendar().get(Calendar.MONTH));
+        mAlertSettleBuilder.setMessage("Are you sure you want to settle up?");
+        DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (which) {
+                    case DialogInterface.BUTTON_NEGATIVE:
+                        dialog.dismiss();
+                        break;
+                    case DialogInterface.BUTTON_POSITIVE:
+                        Calendar calendar = getCurrentCalendar();
+                        List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
+                        if (unsettledMonths == null || unsettledMonths.isEmpty()) {
+                            Log.i("AlertDialog: ", "Unsettled months is empty");
+                            return;
+                        }
+                        unsettledMonths.remove(MONTH_PREFIX + calendar.get(Calendar.MONTH));
+                        m_dateMilkAmountMap.setUnsettledMonths(unsettledMonths);
+                        Log.i("UnsettledMonths:::", m_dateMilkAmountMap.getUnsettledMonths().toString());
+                        findViewById(R.id.textViewBalance).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.textViewAdvance).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.totalAmount).setVisibility(View.INVISIBLE);
+                        findViewById(R.id.settle).setVisibility(View.INVISIBLE);
+                        mPacketsDueMap.remove(calendar.get(Calendar.MONTH));
+                        m_myRef.setValue(m_dateMilkAmountMap);
+                        break;
+                }
+            }
+        };
+        mAlertSettleBuilder.setPositiveButton("Yes", dialogOnClickListener);
+        mAlertSettleBuilder.setNegativeButton("No", dialogOnClickListener);
+    }
 
-        ImageButton plusButton = (ImageButton) findViewById(R.id.imageButton2); // get the reference of CalendarView
+    private void createNotDatedAlertDialog() {
+        mAlertNotDatedBuilder = new AlertDialog.Builder(this, R.style.AlertNotDatedDays);
+        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + getCurrentCalendar().get(Calendar.MONTH));
+        DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (which) {
+                    case DialogInterface.BUTTON_POSITIVE:
+                        dialog.dismiss();
+                        break;
+                }
+            }
+        };
+        mAlertNotDatedBuilder.setPositiveButton("OK", dialogOnClickListener);
+    }
+
+    private void invokeButtonListeners() {
+        ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
         plusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView tv1 = (TextView)findViewById(R.id.textView);
+                TextView tv1 = (TextView) findViewById(R.id.textViewPackets);
                 int currentPackets = Integer.parseInt(tv1.getText().toString());
-                if(currentPackets < 10) {
+                if (currentPackets < 10) {
                     tv1.setText(++currentPackets + "");
-                    Log.i("CurrentValue: ",currentPackets + "");
+                    Log.i("CurrentValue: ", currentPackets + "");
                     Calendar calendar = Calendar.getInstance();
                     calendar.setTime(m_currentDate);
-                    updateDBReference(currentPackets, true,
-                            (calendar.get(Calendar.MONTH) + 1) + "", calendar.get(Calendar.YEAR)+"");                    //  m_dateMilkAmountMap.put(m_currentDate, currentPackets);
-                  //  Calendar calendar = Calendar.getInstance();
-                  /**  try {
-                        calendar.setTime(new SimpleDateFormat("dd-MM-yyyy").parse(m_currentDate));
-                    } catch (ParseException e) {
-                        Log.e("MinusButtonOnClick: ",e.getMessage());
-                    }**/
-                   /** m_myRef.child(calendar.get(Calendar.YEAR)+"")
-                            .child(calendar.get(Calendar.MONTH) + 1 +"")
-                            .child(calendar.get(Calendar.DAY_OF_MONTH)+"").setValue(currentPackets);
-                    **/
+                    updatePackets(currentPackets, YEAR_PREFIX + calendar.get(Calendar.YEAR)
+                            , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
                 }
             }
         });
 
-        ImageButton minusButton = (ImageButton) findViewById(R.id.imageButton); // get the reference of CalendarView
+        ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
         minusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView tv1 = (TextView)findViewById(R.id.textView);
+                TextView tv1 = (TextView) findViewById(R.id.textViewPackets);
                 int currentPackets = Integer.parseInt(tv1.getText().toString());
-                if(currentPackets > 0) {
+                if (currentPackets > 0) {
                     tv1.setText(--currentPackets + "");
-                    Log.i("CurrentValue: ",currentPackets + "");
-                    CalendarView simpleCalendarView = (CalendarView) findViewById(R.id.calendarView); // get the reference of CalendarView
-                   // m_dateMilkAmountMap.put(m_currentDate, currentPackets);
+                    Log.i("CurrentValue: ", currentPackets + "");
                     Calendar calendar = Calendar.getInstance();
-                        calendar.setTime(m_currentDate);
-                    updateDBReference(currentPackets, true,
-                            (calendar.get(Calendar.MONTH) + 1) + "", calendar.get(Calendar.YEAR)+"");
-                  /**  m_myRef.child("years").child(calendar.get(Calendar.YEAR)+"")
-                            .child((calendar.get(Calendar.MONTH) + 1) + "")
-                            .child(calendar.get(Calendar.DAY_OF_MONTH)+ "").setValue(currentPackets);**/
+                    calendar.setTime(m_currentDate);
+                    updatePackets(currentPackets, YEAR_PREFIX + calendar.get(Calendar.YEAR)
+                            , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
                 }
+            }
+
+        });
+
+        Button settleButton = (Button) findViewById(R.id.settle);
+        settleButton.setVisibility(View.INVISIBLE);
+        settleButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                mAlertSettleBuilder.show();
             }
         });
 
+    }
+
+    private void cacheDBData() {
+
+        /**m_myRef = mFireDatabase.getReference();
+         Months months = new Months();
+         Map<String, Integer> daysMap = new HashMap<>();
+         daysMap.put("D1",2);
+         months.setDays(daysMap);
+         months.setMonth(5);
+         Years years = new Years();
+         Map<String, Months> monthsMap = new HashMap<>();
+         monthsMap.put("M5",months);
+         years.setMonths(monthsMap);
+         years.setYear(2018);
+         MilkAccount accounts = new MilkAccount();
+         Map<String, Years> yearsMap = new HashMap<>();
+         yearsMap.put("Y2018",years);
+         accounts.setYears(yearsMap);
+         accounts.setAccount("D3502");
+         m_myRef.setValue(accounts);**/
+        /**   m_myRef = mFireDatabase.getReference();
+         MilkAccount accounts = new MilkAccount();
+         List<String> unsettledMonths = new ArrayList<>();
+         unsettledMonths.add("March");
+         unsettledMonths.add("April");
+         accounts.setUnsettledMonths(unsettledMonths);
+         m_myRef.setValue(accounts);**/
+        //mFireDatabase.setPersistenceEnabled(true);
+        m_myRef = mFireDatabase.getReference();
+        m_myRef.keepSynced(true);
+        m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
+        if (m_dateMilkAmountMap == null) {
+            Log.i("CheckNull", "Yes");
+        }
+    }
+
+    private ValueEventListener attachValueEventListener() {
+        return new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                /** boolean connected = dataSnapshot.getValue(Boolean.class);
+                 if (connected) {
+                 System.out.println("connected");
+                 } else {
+                 System.out.println("not connected");
+                 }**/
+                m_dateMilkAmountMap =
+                        dataSnapshot.getValue(MilkAccount.class);
+                Log.i("YearsMap:", m_dateMilkAmountMap.toString());
+                loadCurrentDate();
+                showTotalPacketsBoughtInMonth(Calendar.getInstance(),
+                        Calendar.getInstance().get(Calendar.MONTH) + 1);
+                checkDue();
+                showSettlement(Calendar.getInstance().get(Calendar.MONTH) + 1);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+    }
+
+    private void checkDue() {
+        List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
+        if (unsettledMonths == null) {
+            Log.i("Checking Due...", "No dues");
+            return;
+        }
+        Calendar calendar = getCurrentCalendar();
+        Years years = m_dateMilkAmountMap.getYears().get(YEAR_PREFIX + calendar.get(Calendar.YEAR));
+        mPacketsDueMap = new HashMap<>();
+/**if(unsettledMonths == null || unsettledMonths.isEmpty()) {
+ unsettledMonths = new ArrayList<>();
+ unsettledMonths.add("M5");
+ m_dateMilkAmountMap.setUnsettledMonths(unsettledMonths);
+ m_myRef.setValue(m_dateMilkAmountMap);
+ }**/
+        appendPreviousMonthToUnsettledMonths(MONTH_PREFIX
+                + calendar.get(Calendar.MONTH), unsettledMonths);
+        for (String unsettledMonth : unsettledMonths) {
+            Log.i("YearsInUnsettled: ", years.toString() + unsettledMonth);
+            Months month = years.getMonths().get(unsettledMonth);
+            Map<String, Integer> daysPacketMap = month.getDays();
+            int unsettledMonthInInt = Integer.parseInt(unsettledMonth.substring(1));
+
+            final int totalDays = getTotalDays(unsettledMonthInInt);
+            calculateMonthBalance(daysPacketMap, unsettledMonthInInt, totalDays);
+        }
+    }
+
+    /**
+     * add previous month if it is not present in unsettledmonths if new month started
+     *
+     * @param prevMonth
+     * @param unsettledMonths
+     */
+    private void appendPreviousMonthToUnsettledMonths(String prevMonth, List<String> unsettledMonths) {
+        if (!unsettledMonths.contains(prevMonth)) {
+            unsettledMonths.add(prevMonth);
+            m_dateMilkAmountMap.setUnsettledMonths(unsettledMonths);
+            m_myRef.setValue(m_dateMilkAmountMap);
+        }
+    }
+
+    /**
+     * get total days of the months
+     *
+     * @param month
+     * @return
+     */
+    private int getTotalDays(int month) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.getInstance().get(Calendar.YEAR), month - 1, 1);
+        return calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    }
+
+    /**
+     * calculates the month balance of the unsettled month
+     *
+     * @param daysPacketMap       days & packets of the unsettled month
+     * @param unsettledMonthInInt unsettled month in integer
+     * @param totalDays           total days of the current month
+     */
+    private void calculateMonthBalance(Map<String, Integer> daysPacketMap, int unsettledMonthInInt, int totalDays) {
+        final int totalPacketsInMonth = (totalDays * DEFAULT_PACKETS);
+        int packetsInDue = totalPacketsInMonth - getTotalPacketsBought(daysPacketMap);
+        mPacketsDueMap.put(unsettledMonthInInt, packetsInDue);
+    }
+
+    /**
+     * updates current date's information and display it in the UI.
+     * displays packets & show alert if previous days are not updated.
+     */
+    private void loadCurrentDate() {
+        Calendar calendar = getCurrentCalendar();
+        updatePackets(DEFAULT_PACKETS, YEAR_PREFIX + calendar.get(Calendar.YEAR)
+                , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
+        Map<String, Integer> daysMap = getDaysMapOfMonth(YEAR_PREFIX + calendar.get(Calendar.YEAR), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
+        updateNotDatedDays(daysMap, calendar.get(Calendar.DAY_OF_MONTH),
+                YEAR_PREFIX + calendar.get(Calendar.YEAR), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
+    }
+
+    /**
+     * shows alert dialog if the previous days of the month before today are not updated
+     *
+     * @param daysMap
+     * @param dayOfMonth
+     * @param year
+     * @param month
+     */
+    private void updateNotDatedDays(Map<String, Integer> daysMap, int dayOfMonth, String year, String month) {
+        boolean foundStartDate = false;
+        for (int i = 1; i < dayOfMonth; i++) {
+            if (!daysMap.containsKey(DAY_PREFIX + i)) {
+                if (!foundStartDate) {
+                    mAlertNotDatedBuilder.setMessage("You have not updated since " + i);
+                    mAlertNotDatedBuilder.show();
+                    foundStartDate = true;
+                }
+                daysMap.put(DAY_PREFIX + i, DEFAULT_PACKETS);
+            }
+        }
+        Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+        Years years = yearsMap.get(year);
+        Map<String, Months> monthsMap = years.getMonths();
+        Months months = monthsMap.get(month);
+        months.setDays(daysMap);
+    }
+
+    /**
+     * get days & packets map of the given month
+     *
+     * @param year
+     * @param month
+     * @return
+     */
+    private Map<String, Integer> getDaysMapOfMonth(String year, String month) {
+        Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+        Years years = yearsMap.get(year);
+        Map<String, Months> monthsMap = years.getMonths();
+        Months months = monthsMap.get(month);
+        return months.getDays();
+    }
+
+    private Calendar getCurrentCalendar() {
+        CalendarView simpleCalendarView = (CalendarView) findViewById(R.id.calendarView); // get the reference of CalendarView
+        m_currentDate = new Date(simpleCalendarView.getDate());
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(m_currentDate);
+        return calendar;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.i("Start: ", "Starting");
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        Log.i("Resume: ", "Resuming" + m_currentDate);
+    }
+
+    /**
+     * updates packets & dates, populates unsettled months in the local cache &
+     * display packets in the UI
+     *
+     * @param packets
+     * @param year
+     * @param dayOfMonth
+     * @param month
+     */
+    private void updatePackets(int packets, String year, String dayOfMonth, String month) {
+        Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+        if (!yearsMap.containsKey(year)) {
+            Years years = new Years();
+            Map<String, Months> monthsMap = new HashMap<>();
+            monthsMap.put(month, populateMonths(dayOfMonth, DEFAULT_PACKETS));
+            years.setMonths(monthsMap);
+            yearsMap.put(year, years);
+        } else {
+            Years years = yearsMap.get(year);
+            Map<String, Months> monthsMap = years.getMonths();
+            if (!monthsMap.containsKey(month)) {
+                monthsMap.put(month, populateMonths(dayOfMonth, DEFAULT_PACKETS));
+                populateUnsettledMonths(month, monthsMap);
+            } else {
+                Months months = monthsMap.get(month);
+                Map<String, Integer> daysMap = months.getDays();
+                if (!daysMap.containsKey(dayOfMonth) || daysMap.get(dayOfMonth) != packets) {
+                    daysMap.put(dayOfMonth, packets);
+                }
+            }
+        }
+        ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(packets));
+    }
+
+    /**
+     * This method will be called when new month is generated.
+     * It populates unsettled month list. If previous month is not present in the list & has due,
+     * then new unsettled months list will be generated.
+     *
+     * @param month
+     * @param monthsMap
+     */
+    private void populateUnsettledMonths(String month, Map<String, Months> monthsMap) {
+        String prevMonth = MONTH_PREFIX + (Integer.parseInt(month.substring(1)) - 1);
+        if (monthsMap.containsKey(prevMonth)) {
+            List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
+            if (unsettledMonths == null) {
+                m_dateMilkAmountMap.setUnsettledMonths(new ArrayList<String>());
+            }
+            //appendPreviousMonthToUnsettledMonths(prevMonth, unsettledMonths);
+        }
+    }
+
+    /**
+     * populate months object with all the days generated till the present day and packets updated.
+     *
+     * @param dayOfMonth
+     * @param packets    usually default packets
+     * @return Months object
+     */
+    private Months populateMonths(String dayOfMonth, int packets) {
+        Months months = new Months();
+        Map<String, Integer> daysMap = new HashMap<>();
+        final int[] days = getAllPreviousDays(dayOfMonth);
+        for (int day : days) {
+            daysMap.put(DAY_PREFIX + day, packets);
+        }
+        months.setDays(daysMap);
+        return months;
+    }
+
+    /**
+     * get all previous days of the present day in integer array
+     *
+     * @param dayOfMonth
+     * @return integer array containing days before present day
+     */
+    private int[] getAllPreviousDays(String dayOfMonth) {
+        final int presentDay = Integer.parseInt(dayOfMonth.substring(1));
+        int[] days = new int[presentDay];
+        for (int i = 0; i < presentDay; i++) {
+            days[i] = i + 1;
+        }
+        return days;
+    }
+
+    private void invokeDateChangeListener() {
+        CalendarView simpleCalendarView = findViewById(R.id.calendarView); // get the reference of CalendarView
         simpleCalendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
             @Override
             public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
-                try {
-                    m_currentDate = new SimpleDateFormat("dd-MM-yyyy").parse(dayOfMonth + "-" + (month + 1) + "-" + year);
-                } catch (ParseException e) {
-                    Log.e("setOnDateChangeListener",e.getMessage());
-                }
-                Log.i("CurrentDate: ",dayOfMonth + "-" + (month + 1) + "-" + year);
-                updateDBReference(2, false, (month + 1) + "", year + "");
-                /**if(!m_dateMilkAmountMap.containsKey(m_currentDate)) {
-                    m_dateMilkAmountMap.put(m_currentDate, 2);
-                    storeMilkDetails(year, month + 1, dayOfMonth,2 );
-                }
-                m_myRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        Log.i("DataChangevalue:",""+dataSnapshot.getValue());
-                    }
+                Log.i("DateChangeListener", "invoking-------");
+                displayPackets(year, dayOfMonth, month + 1);
+                showTotalPacketsBoughtInMonth(Calendar.getInstance(), month + 1);
+                showSettlement(month + 1);
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
-                    }
-                });
-               // Log.i("Value: " , m_val);
-                ((TextView)findViewById(R.id.textView)).setText(m_dateMilkAmountMap.get(m_currentDate) + "");
-                 **/
             }
         });
+        if (m_dateMilkAmountMap == null) {
+            Log.i("CheckNullInDateListener", "Yes");
+        }
+    }
+
+    /**
+     * updates the view of the UI with all UI elements of the current month
+     *
+     * @param currentMonth
+     */
+    private void showSettlement(int currentMonth) {
+        if (mPacketsDueMap == null) {
+            return;
+        }
+        //check if it is current month
+        Calendar currentCalendar = Calendar.getInstance();
+        if (mPacketsDueMap.containsKey(currentMonth - 1)) {
+            // show advance to pay
+            final int advanceToPay = getTotalDays(currentMonth) * DEFAULT_PACKETS * MILK_PACKET_PRICE;
+            final String advMsg = "AdvanceToPay: " + getTotalDays(currentMonth)
+                    + " X " + DEFAULT_PACKETS + " X " + MILK_PACKET_PRICE + " = " + advanceToPay;
+            ((TextView) findViewById(R.id.textViewAdvance))
+                    .setText(advMsg);
+            findViewById(R.id.textViewAdvance).setVisibility(View.VISIBLE);
+
+            //if it is not current month show settle button
+            // Show previous month deductions/balance
+            int totalDuePackets = mPacketsDueMap.get(currentMonth - 1);
+            // final int totalPacketsInPrevMonth = getTotalDays(currentMonth - 1) * DEFAULT_PACKETS;
+            String toDisplay;
+            int totalAmt = 0;
+            int totalDuePrice = 0;
+            if (totalDuePackets > 0) {
+                totalDuePrice = totalDuePackets * MILK_PACKET_PRICE;
+                toDisplay = "Packets Less: " + Math.abs(totalDuePackets) + " X " + MILK_PACKET_PRICE
+                        + " = " + totalDuePrice;
+            } else if (totalDuePackets < 0) {
+                totalDuePrice = totalDuePackets * MILK_PACKET_PRICE;
+                toDisplay = "Packets Extra: " + Math.abs(totalDuePackets) + " X " + MILK_PACKET_PRICE
+                        + " = " + +totalDuePrice;
+            } else {
+                toDisplay = "Packets Balance Nil";
+            }
+            totalAmt = advanceToPay - totalDuePrice;
+
+            ((TextView) findViewById(R.id.textViewBalance))
+                    .setText(toDisplay);
+            ((TextView) findViewById(R.id.textViewBalance))
+                    .setVisibility(View.VISIBLE);
+
+            //show total amount
+            final String totalAmount = "Total Amount: " + totalAmt;
+            ((TextView) findViewById(R.id.totalAmount))
+                    .setText(totalAmount);
+            findViewById(R.id.totalAmount).setVisibility(View.VISIBLE);
+
+            //show settle button
+            findViewById(R.id.settle).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.textViewBalance).setVisibility(View.INVISIBLE);
+            findViewById(R.id.textViewAdvance).setVisibility(View.INVISIBLE);
+            findViewById(R.id.totalAmount).setVisibility(View.INVISIBLE);
+            findViewById(R.id.settle).setVisibility(View.INVISIBLE);
+        }
+        showTotalPacketsBoughtInMonth(currentCalendar, currentMonth);
+
+    }
+
+    private void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
+        //show totalPacketsBought
+        Log.i("TotalPackets for Month:", String.valueOf(currentMonth));
+        Years years = m_dateMilkAmountMap.getYears().get(YEAR_PREFIX + currentCalendar.get(Calendar.YEAR));
+        Months month = years.getMonths().get(MONTH_PREFIX + currentMonth);
+        if (month == null) {
+            ((TextView) findViewById(R.id.textViewTotalPacketsBought))
+                    .setVisibility(View.INVISIBLE);
+            return;
+        }
+        Map<String, Integer> daysPacketMap = month.getDays();
+        final int totalPacketsBought = getTotalPacketsBought(daysPacketMap);
+        Log.i("TotalPackets:", String.valueOf(totalPacketsBought));
+        ((TextView) findViewById(R.id.textViewTotalPacketsBought))
+                .setText("TotalPacketsBought: " + totalPacketsBought);
+        ((TextView) findViewById(R.id.textViewTotalPacketsBought))
+                .setVisibility(View.VISIBLE);
+    }
+
+    private void displayPackets(int year, int dayOfMonth, int month) {
+        String yearString = YEAR_PREFIX + year;
+        String dayString = DAY_PREFIX + dayOfMonth;
+        String monthString = MONTH_PREFIX + month;
+        try {
+            m_currentDate = new SimpleDateFormat("dd-MM-yyyy")
+                    .parse(dayOfMonth + "-" + month + "-" + year);
+            Date today = new Date(System.currentTimeMillis());
+            ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
+            ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
+            if (m_currentDate.after(today)) {
+                minusButton.setVisibility(View.INVISIBLE);
+                plusButton.setVisibility(View.INVISIBLE);
+            } else {
+                if (m_dateMilkAmountMap == null) {
+                    Log.e("Oops No Internet", "Please check the Internet connection...");
+
+                }
+                minusButton.setVisibility(View.VISIBLE);
+                plusButton.setVisibility(View.VISIBLE);
+                Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+                if (yearsMap.containsKey(yearString)) {
+                    Years years = yearsMap.get(yearString);
+                    Map<String, Months> monthsMap = years.getMonths();
+                    if (monthsMap.containsKey(monthString)) {
+                        Months months = monthsMap.get(monthString);
+                        Map<String, Integer> daysMap = months.getDays();
+                        if (daysMap.containsKey(dayString)) {
+                            ((TextView) findViewById(R.id.textViewPackets))
+                                    .setText(String.valueOf(daysMap.get(dayString)));
+                            return;
+                        }
+                    }
+                }
+            }
+            ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
+        } catch (ParseException e) {
+            Log.e("setOnDateChangeListener", e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.i("Stop: ", "Stopping");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (m_dateMilkAmountMap != null) {
+            m_myRef.child("years").setValue(m_dateMilkAmountMap.getYears());
+        }
+        Log.i("Pause: ", "Pausing");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (m_dateMilkAmountMap != null) {
+            m_myRef.child("years").setValue(m_dateMilkAmountMap.getYears());
+        }
+        Log.i("Destroy: ", "Destroying");
     }
 
     private void updateDBReference(final int packets, final boolean update,
                                    final String month, final String year) {
-       /** Log.i("Root:",m_myRef.getRoot().toString());
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(m_currentDate);
-        Map<String, Object> daysMap = new HashMap<>();
-        daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
-        Map<String, Object> monthsMap = new HashMap<>();
-        monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1) ,daysMap);
-        Map<String, Object> yearsMap = new HashMap<>();
-        yearsMap.put("" + calendar.get(Calendar.YEAR), monthsMap);
+        /** Log.i("Root:",m_myRef.getRoot().toString());
+         Calendar calendar = Calendar.getInstance();
+         calendar.setTime(m_currentDate);
+         Map<String, Object> daysMap = new HashMap<>();
+         daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
+         Map<String, Object> monthsMap = new HashMap<>();
+         monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1) ,daysMap);
+         Map<String, Object> yearsMap = new HashMap<>();
+         yearsMap.put("" + calendar.get(Calendar.YEAR), monthsMap);
 
-        Map<String, Object> accountsMap = new HashMap<>();
-        accountsMap.put("years",yearsMap);
-        m_myRef.setValue(accountsMap);**/
+         Map<String, Object> accountsMap = new HashMap<>();
+         accountsMap.put("years",yearsMap);
+         m_myRef.setValue(accountsMap);**/
 
         m_myRef.child("years").child(year).child(month).addValueEventListener(new ValueEventListener() {
             @Override
@@ -156,54 +638,55 @@ public class MainActivity extends AppCompatActivity {
                 Map<String, Object> yearsMap = (Map<String, Object>) dataSnapshot.getValue();
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(m_currentDate);
-                Log.i("YearsMap:",""+yearsMap.get("" + calendar.get(Calendar.YEAR)));
-                if(yearsMap.get("" + calendar.get(Calendar.YEAR)) instanceof java.util.Map) {
-                    Log.i("YearsMap:",""+yearsMap.get("" + calendar.get(Calendar.YEAR)));
+                Log.i("YearsMap:", "" + yearsMap.get("" + calendar.get(Calendar.YEAR)));
+                if (yearsMap.get("" + calendar.get(Calendar.YEAR)) instanceof java.util.Map) {
+                    Log.i("YearsMap:", "" + yearsMap.get("" + calendar.get(Calendar.YEAR)));
                 }
 
-                if(yearsMap.containsKey("" + calendar.get(Calendar.YEAR))) {
+                if (yearsMap.containsKey("" + calendar.get(Calendar.YEAR))) {
                     Log.i("Debug:", calendar.get(Calendar.YEAR) + ":"
                             + (calendar.get(Calendar.MONTH) + 1) + ":" + calendar.get(Calendar.DAY_OF_MONTH));
                     Map<String, Object> monthsMap = (Map<String, Object>) yearsMap.get("" + calendar.get(Calendar.YEAR));
-                    if(monthsMap.containsKey("" + (calendar.get(Calendar.MONTH) + 1))) {
-                        if(monthsMap.get("" + (calendar.get(Calendar.MONTH) + 1)) instanceof java.util.List) {
-                            Log.i("Value:",""+yearsMap.get("" + yearsMap.get("" + calendar.get(Calendar.YEAR))));
+                    if (monthsMap.containsKey("" + (calendar.get(Calendar.MONTH) + 1))) {
+                        if (monthsMap.get("" + (calendar.get(Calendar.MONTH) + 1)) instanceof java.util.List) {
+                            Log.i("Value:", "" + yearsMap.get("" + yearsMap.get("" + calendar.get(Calendar.YEAR))));
                         }
                         Log.i("MonthsMap:", monthsMap.get("" + (calendar.get(Calendar.MONTH) + 1)) + "");
                         Map<String, Object> daysMap = (Map<String, Object>) monthsMap.get("" + (calendar.get(Calendar.MONTH) + 1));
-                        Log.i("DaysMap: ",daysMap.toString());
-                        if(daysMap.containsKey("" + calendar.get(Calendar.DAY_OF_MONTH))) {
-                            Log.i("ExistingValue:",dataSnapshot.getValue().toString()
+                        Log.i("DaysMap: ", daysMap.toString());
+                        if (daysMap.containsKey("" + calendar.get(Calendar.DAY_OF_MONTH))) {
+                            Log.i("ExistingValue:", dataSnapshot.getValue().toString()
                                     + "::" + daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
-                            if(update) {
+                            if (update) {
                                 daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
                                 m_myRef.child("years").child("" + calendar.get(Calendar.YEAR))
                                         .child("" + (calendar.get(Calendar.MONTH) + 1))
                                         .updateChildren(daysMap);
                             }
                         } else {
-                            daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
-                            Log.i("NewValue:",dataSnapshot.getValue().toString()+"::"+yearsMap.toString()+"");
+                            daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
+                            Log.i("NewValue:", dataSnapshot.getValue().toString() + "::" + yearsMap.toString() + "");
                             m_myRef.child("years").child("" + calendar.get(Calendar.YEAR))
                                     .child("" + (calendar.get(Calendar.MONTH) + 1))
-                                    .updateChildren(daysMap);                        }
-                        ((TextView)findViewById(R.id.textView)).setText(daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
+                                    .updateChildren(daysMap);
+                        }
+                        ((TextView) findViewById(R.id.textViewPackets)).setText(daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
                     } else {
                         Map<String, Object> daysMap = new HashMap<>();
-                        daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
-                        monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1) ,daysMap);
+                        daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
+                        monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1), daysMap);
                         m_myRef.child("years").child("" + calendar.get(Calendar.YEAR))
                                 .updateChildren(monthsMap);
-                        Log.i("CreatingMonths",yearsMap.toString());
+                        Log.i("CreatingMonths", yearsMap.toString());
                     }
                 } else {
                     Map<String, Object> daysMap = new HashMap<>();
-                    daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
+                    daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
                     Map<String, Object> monthsMap = new HashMap<>();
-                    monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1) ,daysMap);
-                    yearsMap.put("" + calendar.get(Calendar.YEAR),monthsMap);
-                    m_myRef.child("years").updateChildren(yearsMap) ;
-                    Log.i("CreatingYears",yearsMap.toString());
+                    monthsMap.put("" + (calendar.get(Calendar.MONTH) + 1), daysMap);
+                    yearsMap.put("" + calendar.get(Calendar.YEAR), monthsMap);
+                    m_myRef.child("years").updateChildren(yearsMap);
+                    Log.i("CreatingYears", yearsMap.toString());
                 }
             }
 
@@ -212,5 +695,13 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+    public int getTotalPacketsBought(Map<String, Integer> daysPacketMap) {
+        int totalPacketsBought = 0;
+        for (int packet : daysPacketMap.values()) {
+            totalPacketsBought += packet;
+        }
+        return totalPacketsBought;
     }
 }

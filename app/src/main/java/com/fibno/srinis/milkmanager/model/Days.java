@@ -2,26 +2,26 @@ package com.fibno.srinis.milkmanager.model;
 
 public class Days
 {
-    private String packets;
+    private int packets;
 
-    private String day;
+    private int day;
 
-    public String getPackets ()
+    public int getPackets()
     {
         return packets;
     }
 
-    public void setPackets (String packets)
+    public void setPackets(int packets)
     {
         this.packets = packets;
     }
 
-    public String getDay ()
+    public int getDay()
     {
         return day;
     }
 
-    public void setDay (String day)
+    public void setDay(int day)
     {
         this.day = day;
     }
