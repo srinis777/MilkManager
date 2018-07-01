@@ -20,7 +20,7 @@
     <CalendarView
         android:id="@+id/calendarView"
         android:layout_width="316dp"
-        android:layout_height="317dp"
+        android:layout_height="334dp"
         android:background="#FAE6F1"
         app:layout_constraintHeight_max="wrap"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -95,7 +95,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:layout_marginRight="16dp"
-        android:background="attr/colorAccent"
+        android:background="@color/colorAccent"
         android:text="SETTLE"
         android:textColor="@android:color/background_light"
         app:layout_constraintBottom_toBottomOf="parent"

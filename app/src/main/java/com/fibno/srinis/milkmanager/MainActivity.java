@@ -25,6 +25,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -32,16 +33,13 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    //private HashMap<String, Years> m_dateMilkAmountMap;
     private MilkAccount m_dateMilkAmountMap;
     Map<Integer, Integer> mPacketsDueMap;
     private final FirebaseDatabase mFireDatabase = FirebaseDatabase.getInstance();
     private DatabaseReference m_myRef;
     AlertDialog.Builder mAlertSettleBuilder;
     AlertDialog.Builder mAlertNotDatedBuilder;
-    // private String m_currentDate;
     private Date m_currentDate;
-    static int counter = 0;
 
     //declaring constants
     private int DEFAULT_PACKETS = 2;
@@ -162,6 +160,9 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * cached FireBase DB reference to local POJO
+     */
     private void cacheDBData() {
 
         /**m_myRef = mFireDatabase.getReference();
@@ -224,6 +225,10 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    /**
+     * calculates the due with the previous unsettled months and calculates the
+     * balance
+     */
     private void checkDue() {
         List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
         if (unsettledMonths == null) {
@@ -255,8 +260,8 @@ public class MainActivity extends AppCompatActivity {
     /**
      * add previous month if it is not present in unsettledmonths if new month started
      *
-     * @param prevMonth
-     * @param unsettledMonths
+     * @param prevMonth previous month in String(For eg., May - M5)
+     * @param unsettledMonths list of unsettled months in String
      */
     private void appendPreviousMonthToUnsettledMonths(String prevMonth, List<String> unsettledMonths) {
         if (!unsettledMonths.contains(prevMonth)) {
@@ -269,8 +274,8 @@ public class MainActivity extends AppCompatActivity {
     /**
      * get total days of the months
      *
-     * @param month
-     * @return
+     * @param month month in integer
+     * @return total days
      */
     private int getTotalDays(int month) {
         Calendar calendar = Calendar.getInstance();
@@ -307,36 +312,95 @@ public class MainActivity extends AppCompatActivity {
     /**
      * shows alert dialog if the previous days of the month before today are not updated
      *
-     * @param daysMap
-     * @param dayOfMonth
-     * @param year
-     * @param month
+     * @param daysMap daysmap of the month
+     * @param dayOfMonth today
+     * @param year year in String
+     * @param month month in String
      */
     private void updateNotDatedDays(Map<String, Integer> daysMap, int dayOfMonth, String year, String month) {
         boolean foundStartDate = false;
-        for (int i = 1; i < dayOfMonth; i++) {
-            if (!daysMap.containsKey(DAY_PREFIX + i)) {
-                if (!foundStartDate) {
-                    mAlertNotDatedBuilder.setMessage("You have not updated since " + i);
-                    mAlertNotDatedBuilder.show();
-                    foundStartDate = true;
-                }
-                daysMap.put(DAY_PREFIX + i, DEFAULT_PACKETS);
+        int i = dayOfMonth - 1;
+        for (; i > 0; i--) {
+            if (daysMap.containsKey(DAY_PREFIX + i)) {
+                mAlertNotDatedBuilder.setMessage("You have not updated after " + i);
+                mAlertNotDatedBuilder.show();
+                foundStartDate = true;
+                break;
             }
+            daysMap.put(DAY_PREFIX + i, DEFAULT_PACKETS);
+        }
+        if (i == dayOfMonth - 1) {
+            return;
         }
         Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
         Years years = yearsMap.get(year);
         Map<String, Months> monthsMap = years.getMonths();
         Months months = monthsMap.get(month);
         months.setDays(daysMap);
+
+        if (foundStartDate) {
+            return;
+        }
+
+        // first verify days in previous unsettled months are updated
+        List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
+        if (unsettledMonths.isEmpty()) {
+            return;
+        }
+        List<Integer> unsettledMonthsInInt = new ArrayList<>();
+        for (String unSettledMonth : unsettledMonths) {
+            unsettledMonthsInInt.add(Integer.parseInt(unSettledMonth.substring(1)));
+        }
+        unsettledMonthsInInt.add(Integer.parseInt(month.substring(1)));
+        Collections.sort(unsettledMonthsInInt, Collections.reverseOrder());
+        for (int unSettledMonth : unsettledMonthsInInt) {
+            int day = findNonUpdatedDateBeginning(unSettledMonth, year);
+            if (day != -1) {
+                mAlertNotDatedBuilder.setMessage("You have not updated after " + day + " of" +
+                        " Month " + unSettledMonth);
+                mAlertNotDatedBuilder.show();
+                break;
+            }
+        }
+    }
+
+    /**
+     * finds non updated date beginning for the unsettled month in the app
+     *
+     * @param unSettledMonth
+     * @param year
+     * @return -1 if no days are updated or else return day till the update
+     */
+    private int findNonUpdatedDateBeginning(int unSettledMonth, String year) {
+        int day = -1;
+        Calendar calendar = Calendar.getInstance();
+        Map<String, Integer> prevDaysMap = getDaysMapOfMonth(YEAR_PREFIX +
+                calendar.get(Calendar.YEAR), MONTH_PREFIX + unSettledMonth);
+        final int totalDays = getTotalDays(unSettledMonth);
+        int i = totalDays;
+        for (; i > 0; i--) {
+            if (prevDaysMap.containsKey(DAY_PREFIX + i)) {
+                day = i;
+                break;
+            }
+            prevDaysMap.put(DAY_PREFIX + i, DEFAULT_PACKETS);
+        }
+        if (i != totalDays) {
+            Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+            Years years = yearsMap.get(year);
+            Map<String, Months> monthsMap = years.getMonths();
+            Months months = monthsMap.get(MONTH_PREFIX + unSettledMonth);
+            months.setDays(prevDaysMap);
+        }
+        return day;
     }
 
     /**
      * get days & packets map of the given month
      *
-     * @param year
-     * @param month
-     * @return
+     * @param year year in String
+     * @param month month in String
+     * @return daysMap
      */
     private Map<String, Integer> getDaysMapOfMonth(String year, String month) {
         Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
@@ -370,10 +434,10 @@ public class MainActivity extends AppCompatActivity {
      * updates packets & dates, populates unsettled months in the local cache &
      * display packets in the UI
      *
-     * @param packets
-     * @param year
-     * @param dayOfMonth
-     * @param month
+     * @param packets total packets bought
+     * @param year year in String
+     * @param dayOfMonth day in String
+     * @param month month in String
      */
     private void updatePackets(int packets, String year, String dayOfMonth, String month) {
         Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
@@ -405,8 +469,8 @@ public class MainActivity extends AppCompatActivity {
      * It populates unsettled month list. If previous month is not present in the list & has due,
      * then new unsettled months list will be generated.
      *
-     * @param month
-     * @param monthsMap
+     * @param month month in String
+     * @param monthsMap months map
      */
     private void populateUnsettledMonths(String month, Map<String, Months> monthsMap) {
         String prevMonth = MONTH_PREFIX + (Integer.parseInt(month.substring(1)) - 1);
@@ -422,9 +486,9 @@ public class MainActivity extends AppCompatActivity {
     /**
      * populate months object with all the days generated till the present day and packets updated.
      *
-     * @param dayOfMonth
+     * @param dayOfMonth day in string
      * @param packets    usually default packets
-     * @return Months object
+     * @return Months Months object
      */
     private Months populateMonths(String dayOfMonth, int packets) {
         Months months = new Months();
@@ -440,7 +504,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * get all previous days of the present day in integer array
      *
-     * @param dayOfMonth
+     * @param dayOfMonth day in String
      * @return integer array containing days before present day
      */
     private int[] getAllPreviousDays(String dayOfMonth) {
@@ -472,7 +536,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * updates the view of the UI with all UI elements of the current month
      *
-     * @param currentMonth
+     * @param currentMonth current month(For eg., May means 5)
      */
     private void showSettlement(int currentMonth) {
         if (mPacketsDueMap == null) {
@@ -532,6 +596,11 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * show total packets bought for the month in the text area
+     * @param currentCalendar current date's calendar
+     * @param currentMonth current month(For eg., May - 5)
+     */
     private void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
         //show totalPacketsBought
         Log.i("TotalPackets for Month:", String.valueOf(currentMonth));
@@ -551,6 +620,12 @@ public class MainActivity extends AppCompatActivity {
                 .setVisibility(View.VISIBLE);
     }
 
+    /**
+     * display packets bought of the current date
+     * @param year year
+     * @param dayOfMonth current day
+     * @param month current month(For eg., May - 5)
+     */
     private void displayPackets(int year, int dayOfMonth, int month) {
         String yearString = YEAR_PREFIX + year;
         String dayString = DAY_PREFIX + dayOfMonth;
@@ -561,7 +636,9 @@ public class MainActivity extends AppCompatActivity {
             Date today = new Date(System.currentTimeMillis());
             ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
             ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
-            if (m_currentDate.after(today)) {
+            boolean oldDate = !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString) &&
+                    Calendar.getInstance().get(Calendar.MONTH) + 1 != month;
+            if (m_currentDate.after(today) || oldDate) {
                 minusButton.setVisibility(View.INVISIBLE);
                 plusButton.setVisibility(View.INVISIBLE);
             } else {
@@ -697,6 +774,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * calculates total packets bought for the month and returns it
+     * @param daysPacketMap days packets map of the month
+     * @return total packets bought
+     */
     public int getTotalPacketsBought(Map<String, Integer> daysPacketMap) {
         int totalPacketsBought = 0;
         for (int packet : daysPacketMap.values()) {
