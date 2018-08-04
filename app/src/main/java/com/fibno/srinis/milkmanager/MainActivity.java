@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void createNotDatedAlertDialog() {
         mAlertNotDatedBuilder = new AlertDialog.Builder(this, R.style.AlertNotDatedDays);
-        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + getCurrentCalendar().get(Calendar.MONTH));
+        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + getCurrentCalendar().get(Calendar.MONTH) + 1);
         DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -319,6 +319,9 @@ public class MainActivity extends AppCompatActivity {
      */
     private void updateNotDatedDays(Map<String, Integer> daysMap, int dayOfMonth, String year, String month) {
         boolean foundStartDate = false;
+        if (daysMap.containsKey(DAY_PREFIX + dayOfMonth)) {
+            return;
+        }
         int i = dayOfMonth - 1;
         for (; i > 0; i--) {
             if (daysMap.containsKey(DAY_PREFIX + i)) {
@@ -636,7 +639,9 @@ public class MainActivity extends AppCompatActivity {
             Date today = new Date(System.currentTimeMillis());
             ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
             ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
-            boolean oldDate = !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString) &&
+            ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
+            boolean oldDate = m_dateMilkAmountMap.getUnsettledMonths() != null &&
+                    !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString) &&
                     Calendar.getInstance().get(Calendar.MONTH) + 1 != month;
             if (m_currentDate.after(today) || oldDate) {
                 minusButton.setVisibility(View.INVISIBLE);
@@ -663,7 +668,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-            ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
         } catch (ParseException e) {
             Log.e("setOnDateChangeListener", e.getMessage());
         }
