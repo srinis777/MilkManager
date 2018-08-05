@@ -1,20 +1,28 @@
 package com.fibno.srinis.milkmanager;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CalendarView;
 import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.fibno.srinis.milkmanager.model.MilkAccount;
 import com.fibno.srinis.milkmanager.model.Months;
-import com.fibno.srinis.milkmanager.model.Supplier;
 import com.fibno.srinis.milkmanager.model.Years;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -34,6 +42,7 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static String TAG = MainActivity.class.getSimpleName();
     private MilkAccount m_dateMilkAmountMap;
     Map<Integer, Integer> mPacketsDueMap;
     private final FirebaseDatabase mFireDatabase = FirebaseDatabase.getInstance();
@@ -41,6 +50,14 @@ public class MainActivity extends AppCompatActivity {
     AlertDialog.Builder mAlertSettleBuilder;
     AlertDialog.Builder mAlertNotDatedBuilder;
     private Date m_currentDate;
+    
+    //drawer objects
+    ListView mDrawerList;
+    RelativeLayout mDrawerPane;
+    private ActionBarDrawerToggle mDrawerToggle;
+    private DrawerLayout mDrawerLayout;
+
+    ArrayList<AccountItem> mAccountItems = new ArrayList<AccountItem>();
 
     //declaring constants
     private int DEFAULT_PACKETS = 2;
@@ -55,6 +72,28 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // drawer operation
+        mAccountItems.add(new AccountItem("D3502"));
+        mAccountItems.add(new AccountItem("D3511"));
+        mAccountItems.add(new AccountItem("D3701"));
+
+        // DrawerLayout
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawerLayout);
+
+        // Populate the Navigtion Drawer with options
+        mDrawerPane = (RelativeLayout) findViewById(R.id.drawerPane);
+        mDrawerList = (ListView) findViewById(R.id.navList);
+        DrawerListAdapter adapter = new DrawerListAdapter(this, mAccountItems);
+        mDrawerList.setAdapter(adapter);
+
+        // Drawer Item click listeners
+        mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Log.i(TAG, "onItemClick: " + ((AccountItem)mDrawerList.getItemAtPosition(position)).mAccountName);
+            }
+        });
+        
         cacheDBData();
         invokeDateChangeListener();
         invokeButtonListeners();
@@ -794,5 +833,57 @@ public class MainActivity extends AppCompatActivity {
             totalPacketsBought += packet;
         }
         return totalPacketsBought;
+    }
+
+    class AccountItem {
+        String mAccountName;
+        public AccountItem(String accountName) {
+            this.mAccountName = accountName;
+        }
+    }
+
+    class DrawerListAdapter extends BaseAdapter {
+
+        Context mContext;
+        ArrayList<AccountItem> mAccountItems;
+
+        public DrawerListAdapter(Context context, ArrayList<AccountItem> AccountItems) {
+            mContext = context;
+            mAccountItems = AccountItems;
+        }
+
+        @Override
+        public int getCount() {
+            return mAccountItems.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return mAccountItems.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return 0;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View view;
+
+            if (convertView == null) {
+                LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                view = inflater.inflate(R.layout.drawer_item, null);
+            }
+            else {
+                view = convertView;
+            }
+
+            TextView titleView = (TextView) view.findViewById(R.id.account);
+
+            titleView.setText( mAccountItems.get(position).mAccountName );
+
+            return view;
+        }
     }
 }
