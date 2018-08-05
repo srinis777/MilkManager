@@ -14,6 +14,7 @@ import android.widget.TextView;
 
 import com.fibno.srinis.milkmanager.model.MilkAccount;
 import com.fibno.srinis.milkmanager.model.Months;
+import com.fibno.srinis.milkmanager.model.Supplier;
 import com.fibno.srinis.milkmanager.model.Years;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -165,7 +166,9 @@ public class MainActivity extends AppCompatActivity {
      */
     private void cacheDBData() {
 
-        /**m_myRef = mFireDatabase.getReference();
+ /*       Supplier supplier = new Supplier();
+
+         m_myRef = mFireDatabase.getReference("Supplier");
          Months months = new Months();
          Map<String, Integer> daysMap = new HashMap<>();
          daysMap.put("D1",2);
@@ -181,21 +184,23 @@ public class MainActivity extends AppCompatActivity {
          yearsMap.put("Y2018",years);
          accounts.setYears(yearsMap);
          accounts.setAccount("D3502");
-         m_myRef.setValue(accounts);**/
-        /**   m_myRef = mFireDatabase.getReference();
-         MilkAccount accounts = new MilkAccount();
-         List<String> unsettledMonths = new ArrayList<>();
-         unsettledMonths.add("March");
-         unsettledMonths.add("April");
-         accounts.setUnsettledMonths(unsettledMonths);
-         m_myRef.setValue(accounts);**/
+         //List<String> unsettledMonths = new ArrayList<>();
+         //unsettledMonths.add("M7");
+         //accounts.setUnsettledMonths(unsettledMonths);
+         Map<String, MilkAccount> accountMap = new HashMap<>();
+         accountMap.put("D3502", accounts);
+         m_myRef.setValue(accountMap);*/
+         m_myRef = mFireDatabase.getReference("Supplier").child("D3502").getRef();
+        //System.out.println("--------"+m_myRef.child("D3502"));
+        //DatabaseReference ref = m_myRef.child("D3502").getRef();
+        m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
         //mFireDatabase.setPersistenceEnabled(true);
-        m_myRef = mFireDatabase.getReference();
+        /*m_myRef = mFireDatabase.getReference();
         m_myRef.keepSynced(true);
         m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
         if (m_dateMilkAmountMap == null) {
             Log.i("CheckNull", "Yes");
-        }
+        }*/
     }
 
     private ValueEventListener attachValueEventListener() {
