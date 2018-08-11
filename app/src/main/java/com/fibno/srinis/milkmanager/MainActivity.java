@@ -90,15 +90,19 @@ public class MainActivity extends AppCompatActivity {
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Log.i(TAG, "onItemClick: " + ((AccountItem)mDrawerList.getItemAtPosition(position)).mAccountName);
+                String accountName = ((AccountItem)mDrawerList.getItemAtPosition(position)).mAccountName;
+                Log.i(TAG, "onItemClick: " + accountName);
+                if (m_dateMilkAmountMap != null) {
+                    Log.i("onItemClick","UpdatePreviousAccount");
+                    m_myRef.child("years").setValue(m_dateMilkAmountMap.getYears());
+                }
+                cacheDBData(accountName);
+                invokeDateChangeListener();
+                invokeButtonListeners();
+                createSettleAlertDialog();
+                createNotDatedAlertDialog();
             }
         });
-        
-        cacheDBData();
-        invokeDateChangeListener();
-        invokeButtonListeners();
-        createSettleAlertDialog();
-        createNotDatedAlertDialog();
     }
 
     private void createSettleAlertDialog() {
@@ -138,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void createNotDatedAlertDialog() {
         mAlertNotDatedBuilder = new AlertDialog.Builder(this, R.style.AlertNotDatedDays);
-        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + getCurrentCalendar().get(Calendar.MONTH) + 1);
+        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + (getCurrentCalendar().get(Calendar.MONTH) + 1));
         DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -157,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         plusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 TextView tv1 = (TextView) findViewById(R.id.textViewPackets);
                 int currentPackets = Integer.parseInt(tv1.getText().toString());
                 if (currentPackets < 10) {
@@ -202,8 +207,9 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * cached FireBase DB reference to local POJO
+     * @param accountName
      */
-    private void cacheDBData() {
+    private void cacheDBData(String accountName) {
 
  /*       Supplier supplier = new Supplier();
 
@@ -229,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
          Map<String, MilkAccount> accountMap = new HashMap<>();
          accountMap.put("D3502", accounts);
          m_myRef.setValue(accountMap);*/
-         m_myRef = mFireDatabase.getReference("Supplier").child("D3502").getRef();
+         m_myRef = mFireDatabase.getReference("Supplier").child(accountName).getRef();
         //System.out.println("--------"+m_myRef.child("D3502"));
         //DatabaseReference ref = m_myRef.child("D3502").getRef();
         m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
@@ -252,14 +258,22 @@ public class MainActivity extends AppCompatActivity {
                  } else {
                  System.out.println("not connected");
                  }**/
-                m_dateMilkAmountMap =
-                        dataSnapshot.getValue(MilkAccount.class);
-                Log.i("YearsMap:", m_dateMilkAmountMap.toString());
-                loadCurrentDate();
-                showTotalPacketsBoughtInMonth(Calendar.getInstance(),
-                        Calendar.getInstance().get(Calendar.MONTH) + 1);
-                checkDue();
-                showSettlement(Calendar.getInstance().get(Calendar.MONTH) + 1);
+                if(dataSnapshot.exists()) {
+                    m_dateMilkAmountMap =
+                            dataSnapshot.getValue(MilkAccount.class);
+                    if(m_dateMilkAmountMap == null) {
+                        Log.i("onDataChange:", "NoInfo Found");
+                        return;
+                    }
+                    Log.i("YearsMap:", m_dateMilkAmountMap.toString());
+                    loadCurrentDate();
+                    showTotalPacketsBoughtInMonth(Calendar.getInstance(),
+                            Calendar.getInstance().get(Calendar.MONTH) + 1);
+                    checkDue();
+                    showSettlement(Calendar.getInstance().get(Calendar.MONTH) + 1);
+                } else {
+                    Log.i("NoSnapshot", "NoSnapShot exists");
+                }
             }
 
             @Override
@@ -363,11 +377,10 @@ public class MainActivity extends AppCompatActivity {
      */
     private void updateNotDatedDays(Map<String, Integer> daysMap, int dayOfMonth, String year, String month) {
         boolean foundStartDate = false;
-        if (daysMap.containsKey(DAY_PREFIX + dayOfMonth)) {
-            return;
-        }
+        Log.i("DaysMap", daysMap.toString() + " ");
         int i = dayOfMonth - 1;
         for (; i > 0; i--) {
+            Log.i("IIIDaysMap", String.valueOf(i));
             if (daysMap.containsKey(DAY_PREFIX + i)) {
                 mAlertNotDatedBuilder.setMessage("You have not updated after " + i);
                 mAlertNotDatedBuilder.show();
@@ -487,6 +500,10 @@ public class MainActivity extends AppCompatActivity {
      * @param month month in String
      */
     private void updatePackets(int packets, String year, String dayOfMonth, String month) {
+        if (m_dateMilkAmountMap == null) {
+            Log.e("NoData", "No Data Found");
+            return;
+        }
         Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
         if (!yearsMap.containsKey(year)) {
             Years years = new Years();
@@ -565,6 +582,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void invokeDateChangeListener() {
         CalendarView simpleCalendarView = findViewById(R.id.calendarView); // get the reference of CalendarView
+
         simpleCalendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
             @Override
             public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
@@ -575,9 +593,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-        if (m_dateMilkAmountMap == null) {
-            Log.i("CheckNullInDateListener", "Yes");
-        }
     }
 
     /**
@@ -649,6 +664,10 @@ public class MainActivity extends AppCompatActivity {
      * @param currentMonth current month(For eg., May - 5)
      */
     private void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
+        if (m_dateMilkAmountMap == null) {
+            Log.e("NoData", "No Data Found");
+            return;
+        }
         //show totalPacketsBought
         Log.i("TotalPackets for Month:", String.valueOf(currentMonth));
         Years years = m_dateMilkAmountMap.getYears().get(YEAR_PREFIX + currentCalendar.get(Calendar.YEAR));
@@ -684,7 +703,8 @@ public class MainActivity extends AppCompatActivity {
             ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
             ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
             ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
-            boolean oldDate = m_dateMilkAmountMap.getUnsettledMonths() != null &&
+            boolean oldDate = m_dateMilkAmountMap != null &&
+                    m_dateMilkAmountMap.getUnsettledMonths() != null &&
                     !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString) &&
                     Calendar.getInstance().get(Calendar.MONTH) + 1 != month;
             if (m_currentDate.after(today) || oldDate) {
@@ -693,7 +713,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 if (m_dateMilkAmountMap == null) {
                     Log.e("Oops No Internet", "Please check the Internet connection...");
-
+                    return;
                 }
                 minusButton.setVisibility(View.VISIBLE);
                 plusButton.setVisibility(View.VISIBLE);
