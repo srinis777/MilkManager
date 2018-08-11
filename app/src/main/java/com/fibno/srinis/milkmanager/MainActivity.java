@@ -98,7 +98,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void createNotDatedAlertDialog() {
         mAlertNotDatedBuilder = new AlertDialog.Builder(this, R.style.AlertNotDatedDays);
-        mAlertNotDatedBuilder.setTitle("Not Updated for Month " + getCurrentCalendar().get(Calendar.MONTH) + 1);
+        mAlertNotDatedBuilder.setTitle("Not Updated for Month " +
+                String.valueOf(getCurrentCalendar().get(Calendar.MONTH) + 1));
         DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -165,15 +166,15 @@ public class MainActivity extends AppCompatActivity {
      */
     private void cacheDBData() {
 
-        /**m_myRef = mFireDatabase.getReference();
+       /*  m_myRef = mFireDatabase.getReference("Consumer");
          Months months = new Months();
          Map<String, Integer> daysMap = new HashMap<>();
          daysMap.put("D1",2);
          months.setDays(daysMap);
-         months.setMonth(5);
+         months.setMonth(8);
          Years years = new Years();
          Map<String, Months> monthsMap = new HashMap<>();
-         monthsMap.put("M5",months);
+         monthsMap.put("M8",months);
          years.setMonths(monthsMap);
          years.setYear(2018);
          MilkAccount accounts = new MilkAccount();
@@ -181,21 +182,23 @@ public class MainActivity extends AppCompatActivity {
          yearsMap.put("Y2018",years);
          accounts.setYears(yearsMap);
          accounts.setAccount("D3502");
-         m_myRef.setValue(accounts);**/
-        /**   m_myRef = mFireDatabase.getReference();
-         MilkAccount accounts = new MilkAccount();
-         List<String> unsettledMonths = new ArrayList<>();
-         unsettledMonths.add("March");
-         unsettledMonths.add("April");
-         accounts.setUnsettledMonths(unsettledMonths);
-         m_myRef.setValue(accounts);**/
+         //List<String> unsettledMonths = new ArrayList<>();
+         //unsettledMonths.add("M7");
+         //accounts.setUnsettledMonths(unsettledMonths);
+         Map<String, MilkAccount> accountMap = new HashMap<>();
+         accountMap.put("D3502", accounts);
+         m_myRef.setValue(accountMap);*/
+        m_myRef = mFireDatabase.getReference("Consumer").child("D3502").getRef();
+        //System.out.println("--------"+m_myRef.child("D3502"));
+        //DatabaseReference ref = m_myRef.child("D3502").getRef();
+        m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
         //mFireDatabase.setPersistenceEnabled(true);
-        m_myRef = mFireDatabase.getReference();
+        /*m_myRef = mFireDatabase.getReference();
         m_myRef.keepSynced(true);
         m_myRef.addListenerForSingleValueEvent(attachValueEventListener());
         if (m_dateMilkAmountMap == null) {
             Log.i("CheckNull", "Yes");
-        }
+        }*/
     }
 
     private ValueEventListener attachValueEventListener() {
@@ -318,10 +321,10 @@ public class MainActivity extends AppCompatActivity {
      * @param month month in String
      */
     private void updateNotDatedDays(Map<String, Integer> daysMap, int dayOfMonth, String year, String month) {
-        boolean foundStartDate = false;
         if (daysMap.containsKey(DAY_PREFIX + dayOfMonth)) {
             return;
         }
+        boolean foundStartDate = false;
         int i = dayOfMonth - 1;
         for (; i > 0; i--) {
             if (daysMap.containsKey(DAY_PREFIX + i)) {
@@ -528,7 +531,6 @@ public class MainActivity extends AppCompatActivity {
                 displayPackets(year, dayOfMonth, month + 1);
                 showTotalPacketsBoughtInMonth(Calendar.getInstance(), month + 1);
                 showSettlement(month + 1);
-
             }
         });
         if (m_dateMilkAmountMap == null) {
@@ -640,8 +642,9 @@ public class MainActivity extends AppCompatActivity {
             ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
             ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
             ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
-            boolean oldDate = m_dateMilkAmountMap.getUnsettledMonths() != null &&
-                    !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString) &&
+            boolean oldDate = m_dateMilkAmountMap != null &&
+                    (m_dateMilkAmountMap.getUnsettledMonths() == null ||
+                    !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString)) &&
                     Calendar.getInstance().get(Calendar.MONTH) + 1 != month;
             if (m_currentDate.after(today) || oldDate) {
                 minusButton.setVisibility(View.INVISIBLE);
