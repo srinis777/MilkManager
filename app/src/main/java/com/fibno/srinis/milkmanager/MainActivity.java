@@ -6,9 +6,10 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.SparseIntArray;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CalendarView;
+import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -29,36 +30,45 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
     private MilkAccount m_dateMilkAmountMap;
-    Map<Integer, Integer> mPacketsDueMap;
+    SparseIntArray mPacketsDueMap;
     private final FirebaseDatabase mFireDatabase = FirebaseDatabase.getInstance();
     private DatabaseReference m_myRef;
     AlertDialog.Builder mAlertSettleBuilder;
     AlertDialog.Builder mAlertNotDatedBuilder;
-    private Date m_currentDate;
+    private Date mCurrentDate;
 
     //declaring constants
     private int DEFAULT_PACKETS = 2;
-    private int MILK_PACKET_PRICE = 20;
     private int SERVICE_CHARGE = 30;
     private static String YEAR_PREFIX = "Y";
     private static String MONTH_PREFIX = "M";
     private static String DAY_PREFIX = "D";
+    private int mGridPosition;
 
+    public void setGridPosition(int gridPosition) {
+        mGridPosition = gridPosition;
+    }
+
+    public void setmCurrentDate(Date mCurrentDate) {
+        this.mCurrentDate = mCurrentDate;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("MainActivity","InsideOncreate");
         setContentView(R.layout.activity_main);
         cacheDBData();
         invokeDateChangeListener();
         invokeButtonListeners();
         createSettleAlertDialog();
-        createNotDatedAlertDialog();
     }
 
     private void createSettleAlertDialog() {
@@ -86,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
                         findViewById(R.id.textViewAdvance).setVisibility(View.INVISIBLE);
                         findViewById(R.id.totalAmount).setVisibility(View.INVISIBLE);
                         findViewById(R.id.settle).setVisibility(View.INVISIBLE);
-                        mPacketsDueMap.remove(calendar.get(Calendar.MONTH));
+                        mPacketsDueMap.delete(calendar.get(Calendar.MONTH));
                         m_myRef.setValue(m_dateMilkAmountMap);
                         break;
                 }
@@ -96,60 +106,51 @@ public class MainActivity extends AppCompatActivity {
         mAlertSettleBuilder.setNegativeButton("No", dialogOnClickListener);
     }
 
-    private void createNotDatedAlertDialog() {
-        mAlertNotDatedBuilder = new AlertDialog.Builder(this, R.style.AlertNotDatedDays);
-        mAlertNotDatedBuilder.setTitle("Not Updated for Month " +
-                String.valueOf(getCurrentCalendar().get(Calendar.MONTH) + 1));
-        DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                switch (which) {
-                    case DialogInterface.BUTTON_POSITIVE:
-                        dialog.dismiss();
-                        break;
-                }
-            }
-        };
-        mAlertNotDatedBuilder.setPositiveButton("OK", dialogOnClickListener);
-    }
-
     private void invokeButtonListeners() {
-        ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
+        ImageButton plusButton = findViewById(R.id.imageButtonPlus);
         plusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView tv1 = (TextView) findViewById(R.id.textViewPackets);
+                TextView tv1 = findViewById(R.id.textViewPackets);
                 int currentPackets = Integer.parseInt(tv1.getText().toString());
                 if (currentPackets < 10) {
                     tv1.setText(++currentPackets + "");
                     Log.i("CurrentValue: ", currentPackets + "");
                     Calendar calendar = Calendar.getInstance();
-                    calendar.setTime(m_currentDate);
+                    calendar.setTime(mCurrentDate);
                     updatePackets(currentPackets, YEAR_PREFIX + calendar.get(Calendar.YEAR)
                             , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
+                    CalendarCustomView mView = findViewById(R.id.custom_calendar);
+                    mView.setUpCalendarAdapter(mGridPosition);
+                    Log.i("PLUSS","Gridddpsosss " + mGridPosition);
                 }
             }
         });
 
-        ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
+        ImageButton minusButton = findViewById(R.id.imageButtonMinus);
         minusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView tv1 = (TextView) findViewById(R.id.textViewPackets);
+                TextView tv1 = findViewById(R.id.textViewPackets);
                 int currentPackets = Integer.parseInt(tv1.getText().toString());
                 if (currentPackets > 0) {
                     tv1.setText(--currentPackets + "");
                     Log.i("CurrentValue: ", currentPackets + "");
                     Calendar calendar = Calendar.getInstance();
-                    calendar.setTime(m_currentDate);
+                    calendar.setTime(mCurrentDate);
                     updatePackets(currentPackets, YEAR_PREFIX + calendar.get(Calendar.YEAR)
                             , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
+                    CalendarCustomView mView = findViewById(R.id.custom_calendar);
+                    mView.setUpCalendarAdapter();
+                    GridView calendarGridView = mView.findViewById(R.id.calendar_grid);
+                    mView.setUpCalendarAdapter(mGridPosition);
+                    Log.i("PLUSS","Gridddpsosss " + mGridPosition + " : " + calendarGridView.getAdapter().getItem(mGridPosition).getClass());
                 }
             }
 
         });
 
-        Button settleButton = (Button) findViewById(R.id.settle);
+        Button settleButton = findViewById(R.id.settle);
         settleButton.setVisibility(View.INVISIBLE);
         settleButton.setOnClickListener(new View.OnClickListener() {
 
@@ -201,24 +202,24 @@ public class MainActivity extends AppCompatActivity {
         }*/
     }
 
+    public MilkAccount getDateMilkAmountMap() {
+        return m_dateMilkAmountMap;
+    }
     private ValueEventListener attachValueEventListener() {
         return new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                /** boolean connected = dataSnapshot.getValue(Boolean.class);
-                 if (connected) {
-                 System.out.println("connected");
-                 } else {
-                 System.out.println("not connected");
-                 }**/
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 m_dateMilkAmountMap =
                         dataSnapshot.getValue(MilkAccount.class);
-                Log.i("YearsMap:", m_dateMilkAmountMap.toString());
+                if (m_dateMilkAmountMap != null)
+                    Log.i("YearsMap:", m_dateMilkAmountMap.toString());
                 loadCurrentDate();
                 showTotalPacketsBoughtInMonth(Calendar.getInstance(),
                         Calendar.getInstance().get(Calendar.MONTH) + 1);
                 checkDue();
                 showSettlement(Calendar.getInstance().get(Calendar.MONTH) + 1);
+                CalendarCustomView mView = findViewById(R.id.custom_calendar);
+                mView.setUpCalendarAdapter();
             }
 
             @Override
@@ -232,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
      * calculates the due with the previous unsettled months and calculates the
      * balance
      */
-    private void checkDue() {
+    public void checkDue() {
         List<String> unsettledMonths = m_dateMilkAmountMap.getUnsettledMonths();
         if (unsettledMonths == null) {
             Log.i("Checking Due...", "No dues");
@@ -240,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
         }
         Calendar calendar = getCurrentCalendar();
         Years years = m_dateMilkAmountMap.getYears().get(YEAR_PREFIX + calendar.get(Calendar.YEAR));
-        mPacketsDueMap = new HashMap<>();
+        mPacketsDueMap = new SparseIntArray();
 /**if(unsettledMonths == null || unsettledMonths.isEmpty()) {
  unsettledMonths = new ArrayList<>();
  unsettledMonths.add("M5");
@@ -303,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
      * updates current date's information and display it in the UI.
      * displays packets & show alert if previous days are not updated.
      */
-    private void loadCurrentDate() {
+    public void loadCurrentDate() {
         Calendar calendar = getCurrentCalendar();
         updatePackets(DEFAULT_PACKETS, YEAR_PREFIX + calendar.get(Calendar.YEAR)
                 , DAY_PREFIX + calendar.get(Calendar.DAY_OF_MONTH), MONTH_PREFIX + (calendar.get(Calendar.MONTH) + 1));
@@ -373,8 +374,8 @@ public class MainActivity extends AppCompatActivity {
     /**
      * finds non updated date beginning for the unsettled month in the app
      *
-     * @param unSettledMonth
-     * @param year
+     * @param unSettledMonth unsettle month in int
+     * @param year year in string(2018)
      * @return -1 if no days are updated or else return day till the update
      */
     private int findNonUpdatedDateBeginning(int unSettledMonth, String year) {
@@ -417,10 +418,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Calendar getCurrentCalendar() {
-        CalendarView simpleCalendarView = (CalendarView) findViewById(R.id.calendarView); // get the reference of CalendarView
-        m_currentDate = new Date(simpleCalendarView.getDate());
+        mCurrentDate = new Date();
         Calendar calendar = Calendar.getInstance();
-        calendar.setTime(m_currentDate);
+        calendar.setTime(mCurrentDate);
         return calendar;
     }
 
@@ -433,7 +433,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPostResume() {
         super.onPostResume();
-        Log.i("Resume: ", "Resuming" + m_currentDate);
+        Log.i("Resume: ", "Resuming" + mCurrentDate);
     }
 
     /**
@@ -523,19 +523,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void invokeDateChangeListener() {
-        CalendarView simpleCalendarView = findViewById(R.id.calendarView); // get the reference of CalendarView
-        simpleCalendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
-            @Override
-            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
-                Log.i("DateChangeListener", "invoking-------");
-                displayPackets(year, dayOfMonth, month + 1);
-                showTotalPacketsBoughtInMonth(Calendar.getInstance(), month + 1);
-                showSettlement(month + 1);
-            }
-        });
-        if (m_dateMilkAmountMap == null) {
-            Log.i("CheckNullInDateListener", "Yes");
-        }
+//        LinearLayout simpleCalendarView = findViewById(R.id.calendarView); // get the reference of CalendarView
+//        simpleCalendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
+//            @Override
+//            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+//                Log.i("DateChangeListener", "invoking-------");
+//                displayPackets(year, dayOfMonth, month + 1);
+//                showTotalPacketsBoughtInMonth(Calendar.getInstance(), month + 1);
+//                showSettlement(month + 1);
+//            }
+//        });
+//        if (m_dateMilkAmountMap == null) {
+//            Log.i("CheckNullInDateListener", "Yes");
+//        }
     }
 
     /**
@@ -543,17 +543,18 @@ public class MainActivity extends AppCompatActivity {
      *
      * @param currentMonth current month(For eg., May means 5)
      */
-    private void showSettlement(int currentMonth) {
+    public void showSettlement(int currentMonth) {
+        int milkPacketPrice = 20;
         if (mPacketsDueMap == null) {
             return;
         }
         //check if it is current month
         Calendar currentCalendar = Calendar.getInstance();
-        if (mPacketsDueMap.containsKey(currentMonth - 1)) {
+        if (mPacketsDueMap.get(currentMonth - 1) != 0) {
             // show advance to pay
-            final int advanceToPay = getTotalDays(currentMonth) * DEFAULT_PACKETS * MILK_PACKET_PRICE;
+            final int advanceToPay = getTotalDays(currentMonth) * DEFAULT_PACKETS * milkPacketPrice;
             final String advMsg = "AdvanceToPay: " + getTotalDays(currentMonth)
-                    + " X " + DEFAULT_PACKETS + " X " + MILK_PACKET_PRICE + " = " + advanceToPay;
+                    + " X " + DEFAULT_PACKETS + " X " + milkPacketPrice + " = " + advanceToPay;
             ((TextView) findViewById(R.id.textViewAdvance))
                     .setText(advMsg);
             findViewById(R.id.textViewAdvance).setVisibility(View.VISIBLE);
@@ -563,28 +564,27 @@ public class MainActivity extends AppCompatActivity {
             int totalDuePackets = mPacketsDueMap.get(currentMonth - 1);
             // final int totalPacketsInPrevMonth = getTotalDays(currentMonth - 1) * DEFAULT_PACKETS;
             String toDisplay;
-            int totalAmt = 0;
+            int totalAmt;
             int totalDuePrice = 0;
             if (totalDuePackets > 0) {
-                totalDuePrice = totalDuePackets * MILK_PACKET_PRICE;
-                toDisplay = "Packets Less: " + Math.abs(totalDuePackets) + " X " + MILK_PACKET_PRICE
+                totalDuePrice = totalDuePackets * milkPacketPrice;
+                toDisplay = "Packets Less: " + Math.abs(totalDuePackets) + " X " + milkPacketPrice
                         + " = " + totalDuePrice;
             } else if (totalDuePackets < 0) {
-                totalDuePrice = totalDuePackets * MILK_PACKET_PRICE;
-                toDisplay = "Packets Extra: " + Math.abs(totalDuePackets) + " X " + MILK_PACKET_PRICE
+                totalDuePrice = totalDuePackets * milkPacketPrice;
+                toDisplay = "Packets Extra: " + Math.abs(totalDuePackets) + " X " + milkPacketPrice
                         + " = " + +totalDuePrice;
             } else {
                 toDisplay = "Packets Balance Nil";
             }
             totalAmt = advanceToPay - totalDuePrice;
 
-            ((TextView) findViewById(R.id.textViewBalance))
-                    .setText(toDisplay);
-            ((TextView) findViewById(R.id.textViewBalance))
-                    .setVisibility(View.VISIBLE);
+            ((TextView) findViewById(R.id.textViewBalance)).setText(toDisplay);
+            (findViewById(R.id.textViewBalance)).setVisibility(View.VISIBLE);
 
             //show total amount
-            final String totalAmount = "Total Amount: " + totalAmt;
+            final String totalAmount = new StringBuilder().append("Total Amount: ").
+                    append(totalAmt).toString();
             ((TextView) findViewById(R.id.totalAmount))
                     .setText(totalAmount);
             findViewById(R.id.totalAmount).setVisibility(View.VISIBLE);
@@ -606,14 +606,13 @@ public class MainActivity extends AppCompatActivity {
      * @param currentCalendar current date's calendar
      * @param currentMonth current month(For eg., May - 5)
      */
-    private void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
+    public void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
         //show totalPacketsBought
         Log.i("TotalPackets for Month:", String.valueOf(currentMonth));
         Years years = m_dateMilkAmountMap.getYears().get(YEAR_PREFIX + currentCalendar.get(Calendar.YEAR));
         Months month = years.getMonths().get(MONTH_PREFIX + currentMonth);
         if (month == null) {
-            ((TextView) findViewById(R.id.textViewTotalPacketsBought))
-                    .setVisibility(View.INVISIBLE);
+            (findViewById(R.id.textViewTotalPacketsBought)).setVisibility(View.INVISIBLE);
             return;
         }
         Map<String, Integer> daysPacketMap = month.getDays();
@@ -621,8 +620,7 @@ public class MainActivity extends AppCompatActivity {
         Log.i("TotalPackets:", String.valueOf(totalPacketsBought));
         ((TextView) findViewById(R.id.textViewTotalPacketsBought))
                 .setText("TotalPacketsBought: " + totalPacketsBought);
-        ((TextView) findViewById(R.id.textViewTotalPacketsBought))
-                .setVisibility(View.VISIBLE);
+        (findViewById(R.id.textViewTotalPacketsBought)).setVisibility(View.VISIBLE);
     }
 
     /**
@@ -631,22 +629,52 @@ public class MainActivity extends AppCompatActivity {
      * @param dayOfMonth current day
      * @param month current month(For eg., May - 5)
      */
-    private void displayPackets(int year, int dayOfMonth, int month) {
+    public int getPackets(int year, int dayOfMonth, int month) {
+        String yearString = YEAR_PREFIX + year;
+        String dayString = DAY_PREFIX + dayOfMonth;
+        String monthString = MONTH_PREFIX + month;
+        Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+        if (yearsMap.containsKey(yearString)) {
+            Years years = yearsMap.get(yearString);
+            Map<String, Months> monthsMap = years.getMonths();
+            Log.i("MONTHDebugddd", monthString);
+            if (monthsMap.containsKey(monthString)) {
+                Months months = monthsMap.get(monthString);
+                Map<String, Integer> daysMap = months.getDays();
+
+                if (daysMap.containsKey(dayString)) {
+                    Log.i("Debugddd", dayString);
+                    return daysMap.get(dayString);
+                }
+            }
+        }
+        return -1;
+
+    }
+
+    /**
+     * display packets bought of the current date
+     * @param year year
+     * @param dayOfMonth current day
+     * @param month current month(For eg., May - 5)
+     */
+    public void displayPackets(int year, int dayOfMonth, int month) {
         String yearString = YEAR_PREFIX + year;
         String dayString = DAY_PREFIX + dayOfMonth;
         String monthString = MONTH_PREFIX + month;
         try {
-            m_currentDate = new SimpleDateFormat("dd-MM-yyyy")
+            mCurrentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
                     .parse(dayOfMonth + "-" + month + "-" + year);
             Date today = new Date(System.currentTimeMillis());
-            ImageButton minusButton = (ImageButton) findViewById(R.id.imageButtonMinus); // get the reference of CalendarView
-            ImageButton plusButton = (ImageButton) findViewById(R.id.imageButtonPlus); // get the reference of CalendarView
-            ((TextView) findViewById(R.id.textViewPackets)).setText(String.valueOf(DEFAULT_PACKETS));
+            ImageButton minusButton = findViewById(R.id.imageButtonMinus);
+            ImageButton plusButton = findViewById(R.id.imageButtonPlus);
+            ((TextView) findViewById(R.id.textViewPackets))
+                    .setText(String.valueOf(DEFAULT_PACKETS));
             boolean oldDate = m_dateMilkAmountMap != null &&
                     (m_dateMilkAmountMap.getUnsettledMonths() == null ||
                     !m_dateMilkAmountMap.getUnsettledMonths().contains(monthString)) &&
                     Calendar.getInstance().get(Calendar.MONTH) + 1 != month;
-            if (m_currentDate.after(today) || oldDate) {
+            if (mCurrentDate.after(today) || oldDate) {
                 minusButton.setVisibility(View.INVISIBLE);
                 plusButton.setVisibility(View.INVISIBLE);
             } else {
@@ -657,16 +685,18 @@ public class MainActivity extends AppCompatActivity {
                 minusButton.setVisibility(View.VISIBLE);
                 plusButton.setVisibility(View.VISIBLE);
                 Map<String, Years> yearsMap = m_dateMilkAmountMap.getYears();
+
                 if (yearsMap.containsKey(yearString)) {
                     Years years = yearsMap.get(yearString);
                     Map<String, Months> monthsMap = years.getMonths();
+
                     if (monthsMap.containsKey(monthString)) {
                         Months months = monthsMap.get(monthString);
                         Map<String, Integer> daysMap = months.getDays();
+
                         if (daysMap.containsKey(dayString)) {
                             ((TextView) findViewById(R.id.textViewPackets))
                                     .setText(String.valueOf(daysMap.get(dayString)));
-                            return;
                         }
                     }
                 }
@@ -704,7 +734,7 @@ public class MainActivity extends AppCompatActivity {
                                    final String month, final String year) {
         /** Log.i("Root:",m_myRef.getRoot().toString());
          Calendar calendar = Calendar.getInstance();
-         calendar.setTime(m_currentDate);
+         calendar.setTime(mCurrentDate);
          Map<String, Object> daysMap = new HashMap<>();
          daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH) ,packets);
          Map<String, Object> monthsMap = new HashMap<>();
@@ -718,15 +748,15 @@ public class MainActivity extends AppCompatActivity {
 
         m_myRef.child("years").child(year).child(month).addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 Map<String, Object> yearsMap = (Map<String, Object>) dataSnapshot.getValue();
                 Calendar calendar = Calendar.getInstance();
-                calendar.setTime(m_currentDate);
-                Log.i("YearsMap:", "" + yearsMap.get("" + calendar.get(Calendar.YEAR)));
-                if (yearsMap.get("" + calendar.get(Calendar.YEAR)) instanceof java.util.Map) {
-                    Log.i("YearsMap:", "" + yearsMap.get("" + calendar.get(Calendar.YEAR)));
+                calendar.setTime(mCurrentDate);
+                if (yearsMap == null || yearsMap.get("" + calendar.get(Calendar.YEAR)) == null
+                        || !(yearsMap.get("" + calendar.get(Calendar.YEAR)) instanceof java.util.Map)) {
+                    return;
                 }
-
+                Log.i("YearsMap:", "" + yearsMap.get("" + calendar.get(Calendar.YEAR)));
                 if (yearsMap.containsKey("" + calendar.get(Calendar.YEAR))) {
                     Log.i("Debug:", calendar.get(Calendar.YEAR) + ":"
                             + (calendar.get(Calendar.MONTH) + 1) + ":" + calendar.get(Calendar.DAY_OF_MONTH));
@@ -739,7 +769,8 @@ public class MainActivity extends AppCompatActivity {
                         Map<String, Object> daysMap = (Map<String, Object>) monthsMap.get("" + (calendar.get(Calendar.MONTH) + 1));
                         Log.i("DaysMap: ", daysMap.toString());
                         if (daysMap.containsKey("" + calendar.get(Calendar.DAY_OF_MONTH))) {
-                            Log.i("ExistingValue:", dataSnapshot.getValue().toString()
+                            Log.i("ExistingValue:", Objects
+                                    .requireNonNull(dataSnapshot.getValue()).toString()
                                     + "::" + daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
                             if (update) {
                                 daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
@@ -749,12 +780,13 @@ public class MainActivity extends AppCompatActivity {
                             }
                         } else {
                             daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
-                            Log.i("NewValue:", dataSnapshot.getValue().toString() + "::" + yearsMap.toString() + "");
+                            Log.i("NewValue:", Objects.requireNonNull(dataSnapshot.getValue()).toString() + "::" + yearsMap.toString() + "");
                             m_myRef.child("years").child("" + calendar.get(Calendar.YEAR))
                                     .child("" + (calendar.get(Calendar.MONTH) + 1))
                                     .updateChildren(daysMap);
                         }
-                        ((TextView) findViewById(R.id.textViewPackets)).setText(daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
+                        ((TextView) findViewById(R.id.textViewPackets))
+                                .setText(daysMap.get("" + calendar.get(Calendar.DAY_OF_MONTH)) + "");
                     } else {
                         Map<String, Object> daysMap = new HashMap<>();
                         daysMap.put("" + calendar.get(Calendar.DAY_OF_MONTH), packets);
@@ -775,7 +807,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
 
             }
         });
