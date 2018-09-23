@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "205438775239-3b111168mvs0k96uo4bi45irakv970bk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fibno.srinis.milkmanager",
+            "certificate_hash": "956b06e190c0a5dc4e3970d6ddc15dcb102f351d"
+          }
+        },
+        {
           "client_id": "205438775239-2ml94n5v44a5c0r7tghraj0tti01gvc0.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -42,8 +50,46 @@
             {
               "client_id": "205438775239-2ml94n5v44a5c0r7tghraj0tti01gvc0.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "205438775239-gbgggtajn6h8d71acj0lgemgvggob6fi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fibno.srinis.milkmanager"
+              }
             }
           ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205438775239:android:e8a09be99ed945e5",
+        "android_client_info": {
+          "package_name": "com.fibno.srinis.milksupplier"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205438775239-2ml94n5v44a5c0r7tghraj0tti01gvc0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT1FO7CxIGS0L5zdVtyt4N-gOfB113TFY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
         },
         "ads_service": {
           "status": 2

@@ -7,14 +7,6 @@ public class MilkAccount {
     private Map<String, Years> years;
     private String account;
 
-    public List<String> getUnsettledMonths() {
-        return unsettledMonths;
-    }
-
-    public void setUnsettledMonths(List<String> unsettledMonths) {
-        this.unsettledMonths = unsettledMonths;
-    }
-
     private List<String> unsettledMonths;
 
     public String getAccount() {
@@ -31,6 +23,14 @@ public class MilkAccount {
 
     public void setYears(Map<String, Years> years) {
         this.years = years;
+    }
+
+    public List<String> getUnsettledMonths() {
+        return unsettledMonths;
+    }
+
+    public void setUnsettledMonths(List<String> unsettledMonths) {
+        this.unsettledMonths = unsettledMonths;
     }
 
     @Override

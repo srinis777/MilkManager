@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.v4.widget.DrawerLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.v4.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -11,25 +11,24 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="Manage Milk Account"
-        app:layout_constraintBottom_toTopOf="@+id/calendarView"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.032" />
-
-    <CalendarView
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
         android:id="@+id/calendarView"
         android:layout_width="316dp"
-        android:layout_height="334dp"
+        android:layout_height="wrap_content"
         android:background="#FAE6F1"
+        android:orientation="vertical"
         app:layout_constraintHeight_max="wrap"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
+        app:layout_constraintRight_toRightOf="parent">
+
+        <com.fibno.srinis.milkmanager.CalendarCustomView
+            android:id="@+id/custom_calendar"
+            android:layout_width="match_parent"
+            android:layout_height="400dp">
+
+        </com.fibno.srinis.milkmanager.CalendarCustomView>
+    </LinearLayout>
 
     <ImageButton
         android:id="@+id/imageButtonMinus"
@@ -99,7 +98,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:layout_marginRight="16dp"
+        android:layout_marginEnd="16dp"
         android:background="@color/colorAccent"
         android:text="SETTLE"
         android:textColor="@android:color/background_light"
@@ -130,6 +129,13 @@
             android:layout_height="100dp"
             android:background="@color/material_blue_grey_800"
             android:padding="8dp" >
+            <ImageButton
+                android:id="@+id/addButton"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentTop="true"
+                app:srcCompat="@drawable/ic_baseline_add_24px" />
 
             <TextView
                 android:id="@+id/userName"
