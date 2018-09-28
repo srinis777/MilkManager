@@ -2,7 +2,9 @@ package com.fibno.srinis.milkmanager;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -23,7 +25,9 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.fibno.srinis.milkmanager.model.CloseAppActivity;
 import com.fibno.srinis.milkmanager.model.MilkAccount;
 import com.fibno.srinis.milkmanager.model.Months;
 import com.fibno.srinis.milkmanager.model.Supplier;
@@ -54,7 +58,6 @@ import static com.fibno.srinis.milkmanager.R.*;
 public class MainActivity extends AppCompatActivity {
 
     private static String TAG = MainActivity.class.getSimpleName();
-    private Supplier mSupplier;
     private MilkAccount m_dateMilkAmountMap;
     private Map<String, MilkAccount> milkAccountMap = new HashMap<>();
     SparseIntArray mPacketsDueMap;
@@ -81,6 +84,8 @@ public class MainActivity extends AppCompatActivity {
     private static String DAY_PREFIX = "D";
     private int mGridPosition;
     private List<String> mAccounts;
+    private String mUserId;
+    boolean doubleBackToExitPressedOnce = false;
 
     public void setGridPosition(int gridPosition) {
         mGridPosition = gridPosition;
@@ -104,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
         mDrawerList = findViewById(id.navList);
 
         cacheAccounts();
+        TextView userName = findViewById(id.userName);
+        userName.setText(mUserId);
         // drawer operation
         ImageButton addButton = findViewById(id.addButton);
         addButton.setOnClickListener(new View.OnClickListener() {
@@ -283,7 +290,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cacheAccounts() {
-        m_supplierAccountsListRef = FirebaseDatabase.getInstance().getReference("Supplier");
+        // Get the Intent that started this activity and extract the string
+        Intent intent = getIntent();
+        mUserId = intent.getStringExtra(LauncherActivity.EXTRA_MESSAGE);
+        String key = intent.getStringExtra(LauncherActivity.EXTRA_MESSAGE_KEY);
+
+        m_supplierAccountsListRef = FirebaseDatabase.getInstance()
+                .getReference("Supplier").child(key).child(mUserId);
         Log.i("LLLL" , "" + m_supplierAccountsListRef.getDatabase());
         m_supplierAccountsListRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -321,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
                             //m_supplierAccountsListRef.child("accounts").setValue(milkAccountMap);
                             m_dateMilkAccountMapRef.child("years").setValue(m_dateMilkAmountMap.getYears());
                         }
-                        m_dateMilkAccountMapRef = mFireDatabase.getReference("Supplier").child("accounts").child(accountName).getRef();
+                        m_dateMilkAccountMapRef = m_supplierAccountsListRef.child("accounts").child(accountName).getRef();
                         m_dateMilkAmountMap = milkAccountMap.get(accountName);
                         Log.i("oooododd", m_dateMilkAmountMap.toString());
                         loadCurrentDate();
@@ -377,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
          Map<String, MilkAccount> accountMap = new HashMap<>();
          accountMap.put("D3502", accounts);
          m_dateMilkAccountMapRef.setValue(accountMap);*/
-        m_dateMilkAccountMapRef = mFireDatabase.getReference("Supplier").child("accounts").child(accountName).getRef();
+        m_dateMilkAccountMapRef = m_supplierAccountsListRef.child("accounts").child(accountName).getRef();
 
         //System.out.println("--------"+m_dateMilkAccountMapRef.child("D3502"));
         //DatabaseReference ref = m_dateMilkAccountMapRef.child("D3502").getRef();
@@ -1183,5 +1196,25 @@ public class MainActivity extends AppCompatActivity {
             editDialog.setNegativeButton("Cancel", dialogOnClickListener);
             editDialog.show();
         }
+    }
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed();
+            Intent intent = new Intent(this, CloseAppActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+        }
+
+        this.doubleBackToExitPressedOnce = true;
+        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce=false;
+            }
+        }, 2000);
     }
 }
