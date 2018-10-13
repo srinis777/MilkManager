@@ -22,7 +22,7 @@ public class LauncherActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
         //getApplicationContext().deleteFile(fileName);
-        String userName = readFile(getApplicationContext());
+        String userName = readFile();
         if (!userName.isEmpty()) {
             Intent intent = new Intent(this, MainActivity.class);
             String message = userName.split(":")[0];
@@ -34,9 +34,17 @@ public class LauncherActivity extends AppCompatActivity {
             startActivity(intent);
         }
     }
+    private boolean isFilePresent(String fileName) {
+        String path = getApplicationContext().getFilesDir().getAbsolutePath() + "/" + fileName;
+        File file = new File(path);
+        return file.exists();
+    }
 
-    private String readFile(Context applicationContext) {
+    private String readFile() {
         String temp="";
+        if(!isFilePresent(fileName)) {
+            return temp;
+        }
         FileInputStream inputStream;
         try {
             inputStream = openFileInput(fileName);

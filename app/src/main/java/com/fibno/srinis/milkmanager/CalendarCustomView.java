@@ -35,6 +35,7 @@ public class CalendarCustomView extends LinearLayout {
     private GridAdapter mAdapter;
     private View previousView;
     private int prevViewBGColor = -1;
+    private int prevTextColor = -1;
     List<Date> monthlyDates = new ArrayList<>();
     public CalendarCustomView(Context context) {
         super(context);
@@ -86,23 +87,30 @@ public class CalendarCustomView extends LinearLayout {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if(previousView != null) {
                     previousView.setBackgroundColor(prevViewBGColor);
+                    TextView prevCellNumber = previousView.findViewById(R.id.calendar_date_id);
+                    prevCellNumber.setTextColor(prevTextColor);
                 }
                 if(GridAdapter.previousView != null) {
                     GridAdapter.previousView.setBackgroundColor(GridAdapter.prevViewBGColor);
+                    TextView prevCellNumber = GridAdapter.previousView.findViewById(R.id.calendar_date_id);
+                    prevCellNumber.setTextColor(GridAdapter.prevTextColor);
                     GridAdapter.previousView = null;
                     GridAdapter.prevViewBGColor = -1;
+                    GridAdapter.prevTextColor = -1;
                 }
 
                 TextView cellNumber = view.findViewById(R.id.calendar_date_id);
                     ColorDrawable cd = (ColorDrawable) view.getBackground();
                     prevViewBGColor = cd.getColor();
-                    Log.d("dddd", prevViewBGColor + "");
+                    prevTextColor = cellNumber.getCurrentTextColor();
+                    Log.d("dddd", prevViewBGColor + "::" );
                 previousView = view;
                 Date mDate = monthlyDates.get(position);
                 Log.i("DateChangeListener", "invoking-------" + mDate);
                 Calendar dateCal = Calendar.getInstance();
                 dateCal.setTime(mDate);
-                view.setBackgroundColor(Color.YELLOW);
+                view.setBackgroundColor(view.getResources().getColor(R.color.colorAccent));
+                cellNumber.setTextColor(view.getResources().getColor(R.color.colorWhite));
                 TextView eventIndicator = view.findViewById(R.id.event_id);
                 Log.i(TAG, "EVentTEXXXX:" + eventIndicator.getText());
                 ((MainActivity)context).setGridPosition(position);
@@ -110,6 +118,7 @@ public class CalendarCustomView extends LinearLayout {
 
                 ((MainActivity)context).displayPackets(dateCal.get(Calendar.YEAR), Integer.parseInt(cellNumber.getText().toString()),
                         dateCal.get(Calendar.MONTH) + 1);
+                ((MainActivity)context).showTotalPacketsBoughtInMonth(dateCal, dateCal.get(Calendar.MONTH) + 1);
             }
         });
     }

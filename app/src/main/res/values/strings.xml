@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">MilkManager</string>
     <string name="current_date">June, 2018</string>
+    <string name="account_name">Account Name</string>
+    <string name="settle">Settle</string>
+
     <string name="add_event">ADD CALENDAR EVENT</string>
     <string name="sun">SUN</string>
     <string name="mon">MON</string>

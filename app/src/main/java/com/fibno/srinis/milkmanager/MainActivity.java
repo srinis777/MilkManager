@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
@@ -15,6 +16,7 @@ import android.view.LayoutInflater;
 import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
@@ -99,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.i("MainActivity", "InsideOncreate");
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(layout.activity_main);
 
         // DrawerLayout
@@ -126,12 +129,24 @@ public class MainActivity extends AppCompatActivity {
     private void showAddDialog() {
         AlertDialog.Builder editDialog = new AlertDialog.Builder(this, style.AddAccountDialogStyle);
         editDialog.setTitle("Add account ");
-        final EditText input = new EditText(MainActivity.this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT);
-        input.setLayoutParams(lp);
-        editDialog.setView(input);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        final EditText input = new EditText(this);
+        input.setHint("Enter Account Name");
+//        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+//                LinearLayout.LayoutParams.MATCH_PARENT,
+//                LinearLayout.LayoutParams.MATCH_PARENT);
+//        input.setLayoutParams(lp);
+        layout.addView(input);
+        final EditText prize = new EditText(this);
+        prize.setHint("Set Packet Prize");
+//        lp = new LinearLayout.LayoutParams(
+//                LinearLayout.LayoutParams.MATCH_PARENT,
+//                LinearLayout.LayoutParams.MATCH_PARENT);
+//        pwd.setLayoutParams(lp);
+        layout.addView(prize);
+
+        editDialog.setView(layout);
         DialogInterface.OnClickListener dialogOnClickListener = new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -277,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        Button settleButton = findViewById(id.settle);
+        FloatingActionButton settleButton = findViewById(id.settle);
         settleButton.setVisibility(View.INVISIBLE);
         settleButton.setOnClickListener(new View.OnClickListener() {
 
@@ -329,6 +344,9 @@ public class MainActivity extends AppCompatActivity {
                     public void onItemClick(AdapterView<?> parent, View view, int position, long iid) {
                         String accountName = ((AccountItem) mDrawerList.getItemAtPosition(position)).mAccountName;
                         Log.i(TAG, "onItemClick: " + accountName);
+                        CalendarCustomView mView = findViewById(id.custom_calendar);
+                        TextView accountNameView = mView.findViewById(id.account_name);
+                        accountNameView.setText(accountName);
                         if ( m_dateMilkAmountMap != null ) {
                             Log.i("onItemClick", "UpdatePreviousAccount" + m_dateMilkAmountMap);
                             //m_supplierAccountsListRef.child("accounts").setValue(milkAccountMap);
@@ -338,15 +356,15 @@ public class MainActivity extends AppCompatActivity {
                         m_dateMilkAmountMap = milkAccountMap.get(accountName);
                         Log.i("oooododd", m_dateMilkAmountMap.toString());
                         loadCurrentDate();
+                        invokeButtonListeners();
                         showTotalPacketsBoughtInMonth(Calendar.getInstance(),
                                 Calendar.getInstance().get(Calendar.MONTH) + 1);
                         checkDue();
                         showSettlement(Calendar.getInstance().get(Calendar.MONTH) + 1);
-                        CalendarCustomView mView = findViewById(id.custom_calendar);
                         mView.setUpCalendarAdapter();
                         //cacheDBData(accountName);
-                        invokeButtonListeners();
                         createSettleAlertDialog();
+                        mDrawerLayout.closeDrawer(mDrawerPane);
                     }
                 });
             }
@@ -738,22 +756,35 @@ public class MainActivity extends AppCompatActivity {
     public void showSettlement(int currentMonth) {
         int milkPacketPrice = 20;
         if ( mPacketsDueMap == null ) {
+            findViewById(id.textViewBalance).setVisibility(View.INVISIBLE);
+            findViewById(id.textViewAdvance).setVisibility(View.INVISIBLE);
+            findViewById(id.totalAmount).setVisibility(View.INVISIBLE);
+            findViewById(id.settle).setVisibility(View.INVISIBLE);
             return;
         }
+        int totalDuePackets = 0;
+        int advanceDue = 0;
+        StringBuilder advMsg = new StringBuilder("");
+        for(int i = 0 ; i < mPacketsDueMap.size(); i++) {
+            final int month = mPacketsDueMap.keyAt(i);
+            Log.i("SummingUp Packets Due", "Packets Due for month: " + month + " : "
+            + mPacketsDueMap.valueAt(i));
+            totalDuePackets += mPacketsDueMap.valueAt(i);
+            int advance = getTotalDays(month+1) * DEFAULT_PACKETS * milkPacketPrice;
+            advanceDue += advance;
+            advMsg.append("AdvanceToPay for month ").append(month + 1).append(": ").append(getTotalDays(month+1))
+                    .append(" X ").append(DEFAULT_PACKETS).append(" X ").append(milkPacketPrice).append(" = ").append(advance).append("\n");
+        }
         //check if it is current month
-        Calendar currentCalendar = Calendar.getInstance();
-        if ( mPacketsDueMap.get(currentMonth - 1) != 0 ) {
+        if ( totalDuePackets != 0 ) {
             // show advance to pay
-            final int advanceToPay = getTotalDays(currentMonth) * DEFAULT_PACKETS * milkPacketPrice;
-            final String advMsg = "AdvanceToPay: " + getTotalDays(currentMonth)
-                    + " X " + DEFAULT_PACKETS + " X " + milkPacketPrice + " = " + advanceToPay;
+
             ((TextView) findViewById(id.textViewAdvance))
                     .setText(advMsg);
             findViewById(id.textViewAdvance).setVisibility(View.VISIBLE);
 
             //if it is not current month show settle button
             // Show previous month deductions/balance
-            int totalDuePackets = mPacketsDueMap.get(currentMonth - 1);
             // final int totalPacketsInPrevMonth = getTotalDays(currentMonth - 1) * DEFAULT_PACKETS;
             String toDisplay;
             int totalAmt;
@@ -769,7 +800,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 toDisplay = "Packets Balance Nil";
             }
-            totalAmt = advanceToPay - totalDuePrice;
+            totalAmt = advanceDue - totalDuePrice;
 
             ((TextView) findViewById(id.textViewBalance)).setText(toDisplay);
             (findViewById(id.textViewBalance)).setVisibility(View.VISIBLE);
@@ -783,13 +814,18 @@ public class MainActivity extends AppCompatActivity {
 
             //show settle button
             findViewById(id.settle).setVisibility(View.VISIBLE);
+//            Intent i=new Intent(android.content.Intent.ACTION_SEND);
+//            i.setType("text/plain");
+//            i.putExtra(android.content.Intent.EXTRA_SUBJECT,"Subject test");
+//            i.putExtra(android.content.Intent.EXTRA_TEXT, "extra text that you want to put");
+//            startActivity(Intent.createChooser(i,"Share via"));
         } else {
             findViewById(id.textViewBalance).setVisibility(View.INVISIBLE);
             findViewById(id.textViewAdvance).setVisibility(View.INVISIBLE);
             findViewById(id.totalAmount).setVisibility(View.INVISIBLE);
             findViewById(id.settle).setVisibility(View.INVISIBLE);
         }
-        showTotalPacketsBoughtInMonth(currentCalendar, currentMonth);
+        showTotalPacketsBoughtInMonth(Calendar.getInstance(), currentMonth);
 
     }
 
@@ -799,7 +835,7 @@ public class MainActivity extends AppCompatActivity {
      * @param currentCalendar current date's calendar
      * @param currentMonth    current month(For eg., May - 5)
      */
-    private void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
+    public void showTotalPacketsBoughtInMonth(Calendar currentCalendar, int currentMonth) {
         if ( m_dateMilkAmountMap == null ) {
             Log.e("NoData", "No Data Found");
             return;

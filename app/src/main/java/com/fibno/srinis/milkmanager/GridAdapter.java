@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,7 @@ public class GridAdapter extends ArrayAdapter {
     private int selectedPosition=-1;
     public static View previousView = null;
     public static int prevViewBGColor = -1;
+    public static int prevTextColor = -1;
 
     GridAdapter(Context context, List<Date> monthlyDates, Calendar currentDate, Map<Date, Integer> allEvents) {
         super(context, R.layout.single_cell_layout);
@@ -48,7 +50,7 @@ public class GridAdapter extends ArrayAdapter {
             view = mInflater.inflate(R.layout.single_cell_layout, parent, false);
         }
         if(displayMonth == currentMonth && displayYear == currentYear){
-            view.setBackgroundColor(Color.parseColor("#FAE6F1"));
+            view.setBackgroundColor(view.getResources().getColor(R.color.colorWhite));
         }else{
             view.setBackgroundColor(Color.parseColor("#cccccc"));
         }
@@ -60,7 +62,7 @@ public class GridAdapter extends ArrayAdapter {
         Calendar eventCalendar = Calendar.getInstance();
         if(dayValue == eventCalendar.get(Calendar.DAY_OF_MONTH) && displayMonth == eventCalendar.get(Calendar.MONTH) + 1
                 && displayYear == eventCalendar.get(Calendar.YEAR)) {
-            cellNumber.setBackgroundColor(Color.CYAN);
+            cellNumber.setTextColor(view.getResources().getColor(R.color.colorAccent));
         }
 
         TextView eventIndicator = view.findViewById(R.id.event_id);
@@ -73,7 +75,10 @@ public class GridAdapter extends ArrayAdapter {
             previousView = view;
             ColorDrawable cd = (ColorDrawable) view.getBackground();
             prevViewBGColor = cd.getColor();
-            view.setBackgroundColor(Color.YELLOW);
+            prevTextColor = cellNumber.getCurrentTextColor();
+            view.setBackgroundColor(view.getResources().getColor(R.color.colorAccent));
+            Log.i("cellcoloorrrrrr", "invoking-------" + mDate);
+            cellNumber.setTextColor(view.getResources().getColor(R.color.colorWhite));
             view.setSelected(true);
         }
 

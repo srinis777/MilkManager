@@ -276,6 +276,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         DatabaseReference m_supplierAccountsListRef = FirebaseDatabase.getInstance().getReference("Supplier");
         String key = m_supplierAccountsListRef.push().getKey();
         m_supplierAccountsListRef.child(key).setValue(email);
+        m_supplierAccountsListRef.child(key).child(email).child("password").setValue(pwd);
         Intent intent = new Intent(getApplicationContext(), MainActivity.class);
         intent.putExtra(LauncherActivity.EXTRA_MESSAGE, email);
         intent.putExtra(LauncherActivity.EXTRA_MESSAGE_KEY, key);
