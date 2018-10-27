@@ -9,9 +9,9 @@
     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
         android:id="@+id/calendarView"
-        android:layout_width="316dp"
-        android:layout_height="wrap_content"
-        android:background="#FAE6F1"
+        android:layout_width="0dp"
+        android:layout_height="530dp"
+        android:background="@color/colorWhite"
         android:orientation="vertical"
         app:layout_constraintHeight_max="wrap"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -20,90 +20,105 @@
         <com.fibno.srinis.milkmanager.CalendarCustomView
             android:id="@+id/custom_calendar"
             android:layout_width="match_parent"
-            android:layout_height="400dp"></com.fibno.srinis.milkmanager.CalendarCustomView>
+            android:layout_height="match_parent">
+
+        </com.fibno.srinis.milkmanager.CalendarCustomView>
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/imageButtonMinus"
-        style="@android:style/Widget.DeviceDefault.Light.ImageButton"
-        android:layout_width="40dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="8dp"
-        android:elevation="0dp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/calendarView"
-        app:srcCompat="@drawable/ic_remove_black_24px" />
-
-    <ImageButton
-        android:id="@+id/imageButtonPlus"
-        android:layout_width="44dp"
-        android:layout_height="42dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/textViewPackets"
-        app:layout_constraintTop_toBottomOf="@+id/calendarView"
-        app:layout_constraintVertical_bias="0.049"
-        app:srcCompat="@drawable/ic_add_black_24px" />
-
-    <TextView
-        android:id="@+id/textViewPackets"
-        android:layout_width="21dp"
-        android:layout_height="36dp"
-        android:layout_marginBottom="24dp"
-        android:text="2"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/imageButtonMinus"
-        app:layout_constraintTop_toBottomOf="@+id/calendarView"
-        app:layout_constraintVertical_bias="0.119" />
-
-    <TextView
-        android:id="@+id/textViewTotalPacketsBought"
-        android:layout_width="wrap_content"
-        android:layout_height="25dp"
-        app:layout_constraintBaseline_toBaselineOf="parent"
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="7"
+        android:fillViewport="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
-        app:layout_constraintTop_toBottomOf="@+id/imageButtonMinus"
-        app:layout_constraintVertical_bias="0.153" />
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/calendarView">
 
-    <TextView
-        android:id="@+id/textViewAdvance"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewTotalPacketsBought" />
+        <android.support.constraint.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintHeight_max="wrap"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent">
 
-    <TextView
-        android:id="@+id/textViewBalance"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
-        app:layout_constraintTop_toBottomOf="@+id/textViewAdvance"
-        app:layout_constraintVertical_bias="0.04" />
+            <ImageButton
+                android:id="@+id/imageButtonMinus"
+                style="@android:style/Widget.DeviceDefault.Light.ImageButton"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="8dp"
+                android:elevation="0dp"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:srcCompat="@drawable/ic_remove_black_24px" />
 
-    <Button
-        android:id="@+id/settle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:layout_marginEnd="16dp"
-        android:background="@color/colorAccent"
-        android:text="SETTLE"
-        android:textColor="@android:color/background_light"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
+            <ImageButton
+                android:id="@+id/imageButtonPlus"
+                android:layout_width="44dp"
+                android:layout_height="42dp"
+                app:layout_constraintLeft_toRightOf="@+id/textViewPackets"
+                app:srcCompat="@drawable/ic_add_black_24px" />
 
-    <TextView
-        android:id="@+id/totalAmount"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewBalance"
-        app:layout_constraintVertical_bias="0.195" />
+            <TextView
+                android:id="@+id/textViewPackets"
+                android:layout_width="21dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="60dp"
+                android:paddingLeft="5dp"
+                android:paddingTop="5dp"
+                android:text="2"
+                app:layout_constraintLeft_toRightOf="@+id/imageButtonMinus" />
 
+            <TextView
+                android:id="@+id/textViewTotalPacketsBought"
+                android:layout_width="wrap_content"
+                android:layout_height="25dp"
+                app:layout_constraintBaseline_toBaselineOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
+                app:layout_constraintTop_toBottomOf="@+id/imageButtonMinus"
+                app:layout_constraintVertical_bias="0.153" />
+
+            <TextView
+                android:id="@+id/textViewAdvance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textViewTotalPacketsBought" />
+
+            <TextView
+                android:id="@+id/textViewBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/imageButtonPlus"
+                app:layout_constraintTop_toBottomOf="@+id/textViewAdvance"
+                app:layout_constraintVertical_bias="0.04" />
+
+            <Button
+                android:id="@+id/settle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/colorAccent"
+                android:text="SETTLE"
+                android:textColor="@android:color/background_light"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintRight_toRightOf="parent" />
+
+            <TextView
+                android:id="@+id/totalAmount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textViewBalance"
+                app:layout_constraintVertical_bias="0.195" />
+        </android.support.constraint.ConstraintLayout>
+    </ScrollView>
 </android.support.constraint.ConstraintLayout>
